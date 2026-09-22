@@ -3,6 +3,7 @@
     "name": "File-Sharing-App",
     "slug": "File-Sharing-App",
     "version": "1.0.0",
+    
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "filesharingapp",
@@ -16,6 +17,7 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.FileSharingApp"
@@ -33,11 +35,29 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
-      ]
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you share them with nearby devices.",
+          "cameraPermission": "The app accesses your camera to let you take photos to share."
+        }
+      ],
+      "expo-document-picker"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b473375d-b27b-465e-b181-df207b2d4087"
+      }
     }
   }
 }
+
+
+
+

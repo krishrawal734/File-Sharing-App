@@ -10,10 +10,10 @@ export default function HomeScreen() {
     <SafeAreaView className="flex-1 bg-slate-50">
       <StatusBar style="dark" />
 
-      <View className="flex-1 px-5 pt-8">
+      <View className="flex-1 px-5 pt-8 font-bold text-slate-900">
         <AppHeader
           title="File Share"
-          subtitle="Share files with nearby devices"
+          subtitle="Share files with nearby devices "
         />
 
         <View className="gap-4">
