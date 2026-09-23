@@ -1,38 +1,58 @@
+import { SafeAreaView, ScrollView, View } from "react-native";
 import { router } from "expo-router";
-import { SafeAreaView, Text, View } from "react-native";
 
 import AppHeader from "../../components/AppHeader";
-import PrimaryButton from "../../components/PrimaryButton";
+import DeviceCard from "../../components/DeviceCard";
+
+import { Device } from "../../types/device";
+
+const nearbyDevices: Device[] = [
+  {
+    id: "1",
+    name: "Rahul's Android",
+    type: "android",
+    connected: false,
+  },
+  {
+    id: "2",
+    name: "Krish's iPhone",
+    type: "ios",
+    connected: false,
+  },
+  {
+    id: "3",
+    name: "Office PC",
+    type: "pc",
+    connected: false,
+  },
+];
 
 export default function DevicesScreen() {
+  const handleConnect = (device: Device) => {
+    console.log("Selected device:", device);
+
+    router.push("/send/transfer");
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
       <View className="flex-1 px-5 pt-8">
         <AppHeader
           title="Connect Device"
-          subtitle="Connect to a nearby device"
+          subtitle="Choose a nearby device"
         />
 
-        <View className="rounded-2xl bg-white p-5">
-          <Text className="text-lg font-bold text-slate-900">
-            QR Connection
-          </Text>
-
-          <View className="mt-5 h-48 items-center justify-center rounded-xl bg-slate-100">
-            <Text className="text-slate-500">QR Code</Text>
-          </View>
-
-          <Text className="mt-4 text-center text-slate-500">
-            Real QR generation will be added on Day 3.
-          </Text>
-        </View>
-
-        <View className="mt-auto pb-6">
-          <PrimaryButton
-            title="Start Transfer"
-            onPress={() => router.push("/send/transfer")}
-          />
-        </View>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+        >
+          {nearbyDevices.map((device) => (
+            <DeviceCard
+              key={device.id}
+              device={device}
+              onConnect={handleConnect}
+            />
+          ))}
+        </ScrollView>
       </View>
     </SafeAreaView>
   );

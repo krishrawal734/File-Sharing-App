@@ -16,7 +16,7 @@ export default function ScanScreen() {
           </View>
         </View>
 
-        <View className="pb-6">
+        <View className="pb-6 mb-10">
           <PrimaryButton
             title="Connect"
             onPress={() => router.push("/receive/transfer")}
