@@ -1,28 +1,76 @@
+import { CameraView, useCameraPermissions } from "expo-camera";
+import { useState } from "react";
+import {
+  Button,
+  Text,
+  View,
+} from "react-native";
 import { router } from "expo-router";
-import { SafeAreaView, Text, View } from "react-native";
-
-import AppHeader from "../../components/AppHeader";
-import PrimaryButton from "../../components/PrimaryButton";
 
 export default function ScanScreen() {
-  return (
-    <SafeAreaView className="flex-1 bg-slate-50">
-      <View className="flex-1 px-5 pt-8">
-        <AppHeader title="Scan QR" subtitle="Scan the sender's QR code" />
+  const [permission, requestPermission] =
+    useCameraPermissions();
 
-        <View className="flex-1 items-center justify-center">
-          <View className="h-64 w-64 items-center justify-center rounded-2xl bg-slate-200">
-            <Text className="text-slate-500">QR Scanner</Text>
-          </View>
-        </View>
+  const [scanned, setScanned] = useState(false);
 
-        <View className="pb-6 mb-10">
-          <PrimaryButton
-            title="Connect"
-            onPress={() => router.push("/receive/transfer")}
-          />
-        </View>
+  if (!permission) {
+    return (
+      <View className="flex-1 items-center justify-center">
+        <Text>Loading camera...</Text>
       </View>
-    </SafeAreaView>
+    );
+  }
+
+  if (!permission.granted) {
+    return (
+      <View className="flex-1 items-center justify-center px-6">
+        <Text className="mb-4 text-center">
+          Camera permission is required.
+        </Text>
+
+        <Button
+          title="Allow Camera"
+          onPress={requestPermission}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <View className="flex-1">
+      <CameraView
+        style={{ flex: 1 }}
+        facing="back"
+        barcodeScannerSettings={{
+          barcodeTypes: ["qr"],
+        }}
+        onBarcodeScanned={
+          scanned
+            ? undefined
+            : ({ data }) => {
+                setScanned(true);
+
+                console.log(
+                  "QR connection URL:",
+                  data
+                );
+
+                // Open receiver transfer screen
+                router.push({
+                  pathname: "/receive/transfer",
+                  params: {
+                    serverUrl: data,
+                  },
+                });
+              }
+        }
+      />
+
+      <View className="absolute bottom-10 left-0 right-0 items-center">
+        <Text className="rounded-xl bg-black/70 px-5 py-3 text-white">
+          Scan the sender QR code
+        </Text>
+      </View>
+    </View>
   );
 }

@@ -1,5 +1,7 @@
 import { router } from "expo-router";
-import { SafeAreaView, View } from "react-native";
+import { SafeAreaView, View ,  Pressable, Text } from "react-native";
+
+
 
 import AppHeader from "../../components/AppHeader";
 import PrimaryButton from "../../components/PrimaryButton";
@@ -14,10 +16,14 @@ export default function ReceiveScreen() {
         />
 
         <View className="mt-4">
-          <PrimaryButton
-            title="Scan QR Code"
-            onPress={() => router.push("/receive/scan")}
-          />
+          <Pressable
+  onPress={() => router.push("/receive/scan")}
+  className="rounded-xl bg-blue-600 px-5 py-4"
+>
+  <Text className="text-center font-semibold text-white">
+    Scan QR Code
+  </Text>
+</Pressable>
         </View>
       </View>
     </SafeAreaView>

@@ -1,10 +1,5 @@
 import { useState } from "react";
-import {
-  Alert,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
+import { Alert, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 
@@ -14,12 +9,13 @@ import FileCard from "../../components/FileCard";
 
 import { SelectedFile, FileType } from "../../types/file";
 
+import { clearSharedFiles, copyFileToServer } from "../../server/localServer";
+
 export default function SelectFilesScreen() {
   const [files, setFiles] = useState<SelectedFile[]>([]);
+  const [copying, setCopying] = useState(false);
 
-  const getFileType = (
-    mimeType?: string | null
-  ): FileType => {
+  const getFileType = (mimeType?: string | null): FileType => {
     if (!mimeType) {
       return "other";
     }
@@ -47,53 +43,86 @@ export default function SelectFilesScreen() {
     return "other";
   };
 
+  const addFilesToServer = async (selectedFiles: SelectedFile[]) => {
+    try {
+      setCopying(true);
+
+      // Remove files from previous transfer
+      await clearSharedFiles();
+
+      for (const file of selectedFiles) {
+        console.log("Copying file:", file.name);
+
+        await copyFileToServer(file.uri, file.name);
+
+        console.log("Copied successfully:", file.name);
+      }
+
+      setFiles((current) => [...current, ...selectedFiles]);
+
+      Alert.alert(
+        "Files Ready",
+        `${selectedFiles.length} file${
+          selectedFiles.length !== 1 ? "s" : ""
+        } added to the local server.`,
+      );
+    } catch (error: any) {
+      console.log("File copy error:", error);
+
+      Alert.alert(
+        "Copy Failed",
+        error?.message || "Could not copy the selected file.",
+      );
+    } finally {
+      setCopying(false);
+    }
+  };
+
   const pickPhotosAndVideos = async () => {
     try {
       const ImagePicker = require("expo-image-picker");
+
       const permission =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (!permission.granted) {
         Alert.alert(
           "Permission required",
-          "Please allow access to your photos and videos."
+          "Please allow access to your photos and videos.",
         );
 
         return;
       }
 
-      const result =
-        await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ["images", "videos"],
-          allowsMultipleSelection: true,
-          quality: 1,
-        });
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images", "videos"],
+        allowsMultipleSelection: true,
+        quality: 1,
+      });
 
       if (result.canceled) {
         return;
       }
 
-      const selectedFiles: SelectedFile[] =
-        result.assets.map((asset: any) => ({
-          id: `${asset.assetId ?? ""}-${asset.uri}-${Date.now()}`,
-          name:
-            asset.fileName ??
-            asset.uri.split("/").pop() ??
-            "Unknown file",
-          size: asset.fileSize ?? 0,
-          uri: asset.uri,
-          type: getFileType(asset.mimeType),
-          mimeType: asset.mimeType,
-        }));
+      const selectedFiles: SelectedFile[] = result.assets.map((asset: any) => ({
+        id: `${asset.assetId ?? ""}-${asset.uri}-${Date.now()}`,
 
-      setFiles((current) => [
-        ...current,
-        ...selectedFiles,
-      ]);
+        name: asset.fileName ?? asset.uri.split("/").pop() ?? "Unknown file",
+
+        size: asset.fileSize ?? 0,
+
+        uri: asset.uri,
+
+        type: getFileType(asset.mimeType),
+
+        mimeType: asset.mimeType,
+      }));
+
+      await addFilesToServer(selectedFiles);
     } catch (error: any) {
       Alert.alert(
         "Module Error",
-        error?.message || "ImagePicker native module is not available."
+        error?.message || "ImagePicker native module is not available.",
       );
     }
   };
@@ -101,67 +130,60 @@ export default function SelectFilesScreen() {
   const pickDocuments = async () => {
     try {
       const DocumentPicker = require("expo-document-picker");
-      const result =
-        await DocumentPicker.getDocumentAsync({
-          type: "*/*",
-          multiple: true,
-          copyToCacheDirectory: true,
-        });
+
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "*/*",
+        multiple: true,
+        copyToCacheDirectory: true,
+      });
 
       if (result.canceled) {
         return;
       }
 
-      const selectedFiles: SelectedFile[] =
-        result.assets.map((asset: any) => ({
-          id: `${asset.uri}-${Date.now()}`,
-          name: asset.name,
-          size: asset.size ?? 0,
-          uri: asset.uri,
-          type: getFileType(asset.mimeType),
-          mimeType: asset.mimeType,
-        }));
+      const selectedFiles: SelectedFile[] = result.assets.map((asset: any) => ({
+        id: `${asset.uri}-${Date.now()}`,
 
-      setFiles((current) => [
-        ...current,
-        ...selectedFiles,
-      ]);
+        name: asset.name,
+
+        size: asset.size ?? 0,
+
+        uri: asset.uri,
+
+        type: getFileType(asset.mimeType),
+
+        mimeType: asset.mimeType,
+      }));
+
+      await addFilesToServer(selectedFiles);
     } catch (error: any) {
       Alert.alert(
         "Module Error",
-        error?.message || "DocumentPicker native module is not available."
+        error?.message || "DocumentPicker native module is not available.",
       );
     }
   };
 
   const removeFile = (id: string) => {
-    setFiles((current) =>
-      current.filter((file) => file.id !== id)
-    );
+    setFiles((current) => current.filter((file) => file.id !== id));
   };
 
-  const totalSize = files.reduce(
-    (total, file) => total + file.size,
-    0
-  );
+  const totalSize = files.reduce((total, file) => total + file.size, 0);
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
       <View className="flex-1 px-5 pt-8">
-        <AppHeader
-          title="Select Files"
-          subtitle="Choose files to send"
-        />
+        <AppHeader title="Select Files" subtitle="Choose files to send" />
 
         <View className="gap-3">
           <PrimaryButton
-            title="📷 Photos & Videos"
-            onPress={pickPhotosAndVideos}
+            title={copying ? "Copying..." : "📷 Photos & Videos"}
+            onPress={copying ? undefined : pickPhotosAndVideos}
           />
 
           <PrimaryButton
-            title="📄 Documents & Files"
-            onPress={pickDocuments}
+            title={copying ? "Please wait..." : "📄 Documents & Files"}
+            onPress={copying ? undefined : pickDocuments}
           />
         </View>
 
@@ -173,19 +195,13 @@ export default function SelectFilesScreen() {
               </Text>
             </View>
           ) : (
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-            >
+            <ScrollView showsVerticalScrollIndicator={false}>
               <Text className="mb-3 text-lg font-bold text-slate-900">
                 Selected Files ({files.length})
               </Text>
 
               {files.map((file) => (
-                <FileCard
-                  key={file.id}
-                  file={file}
-                  onRemove={removeFile}
-                />
+                <FileCard key={file.id} file={file} onRemove={removeFile} />
               ))}
             </ScrollView>
           )}
@@ -193,19 +209,19 @@ export default function SelectFilesScreen() {
 
         <View className="border-t border-slate-200 pt-4">
           <Text className="mb-3 text-center text-slate-500">
-            {files.length} file{files.length !== 1 ? "s" : ""} selected
+            {files.length} file
+            {files.length !== 1 ? "s" : ""} selected
           </Text>
 
           <PrimaryButton
-            title={`Continue (${(totalSize / 1024 / 1024).toFixed(
-              2
-            )} MB)`}
+            title={`Continue (${(totalSize / 1024 / 1024).toFixed(2)} MB)`}
             onPress={() => {
               if (files.length === 0) {
                 Alert.alert(
                   "No files selected",
-                  "Please select at least one file."
+                  "Please select at least one file.",
                 );
+
                 return;
               }
 

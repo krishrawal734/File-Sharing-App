@@ -3,7 +3,6 @@
     "name": "File-Sharing-App",
     "slug": "File-Sharing-App",
     "version": "1.0.0",
-    
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "filesharingapp",
@@ -17,7 +16,6 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
-        
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.FileSharingApp"
@@ -27,6 +25,12 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow File Sharing to use your camera"
+        }
+      ],
       "expo-router",
       [
         "expo-splash-screen",
@@ -43,7 +47,10 @@
           "cameraPermission": "The app accesses your camera to let you take photos to share."
         }
       ],
-      "expo-document-picker"
+      "expo-document-picker",
+      "expo-media-library",
+      "expo-sqlite",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -57,7 +64,3 @@
     }
   }
 }
-
-
-
-
