@@ -37,26 +37,13 @@ export async function clearSharedFiles() {
         sharedDirectory
       );
 
-    for (const fileName of files) {
-      const fileUri =
-        `${sharedDirectory}${fileName}`;
-
-      await FileSystem.deleteAsync(
-        fileUri,
-        {
-          idempotent: true,
-        }
-      );
-
-      console.log(
-        "Deleted old shared file:",
-        fileName
-      );
-    }
-
-    console.log(
-      "Shared directory cleared."
+    await Promise.all(
+      files.map((fileName) =>
+        FileSystem.deleteAsync(`${sharedDirectory}${fileName}`, { idempotent: true })
+      )
     );
+
+    console.log("Shared directory cleared.");
   } catch (error) {
     console.log(
       "Failed to clear shared files:",
@@ -68,44 +55,54 @@ export async function clearSharedFiles() {
 }
 
 /**
- * Start local HTTP server
+ * Start local HTTP server with automatic port fallback to prevent EADDRINUSE errors
  */
 export async function startLocalServer() {
   try {
     await ensureSharedDirectory();
 
     if (server) {
-      const running =
-        await server.isRunning();
+      try {
+        const running = await server.isRunning();
+        if (running) {
+          const existingUrl = await server.getURL();
+          if (existingUrl) {
+            console.log("Reusing running local server:", existingUrl);
+            return existingUrl;
+          }
+        }
+      } catch (e) {
+        console.log("Error checking server state, resetting server instance:", e);
+      }
 
-      if (running) {
-        return server.getURL();
+      try {
+        await server.stop();
+      } catch (e) {
+        // Ignore stop error during reset
+      }
+      server = null;
+    }
+
+    const candidatePorts = [8080, 8085, 8090, 8888, 9090];
+    let lastError: any = null;
+
+    for (const port of candidatePorts) {
+      try {
+        console.log(`Attempting to start StaticServer on port ${port}...`);
+        const newServer = new StaticServer(port, sharedDirectory);
+        const url = await newServer.start();
+        server = newServer;
+        console.log(`Local server started successfully on port ${port}:`, url);
+        return url;
+      } catch (err: any) {
+        console.log(`Port ${port} unavailable (${err?.message || err}), trying next port...`);
+        lastError = err;
       }
     }
 
-    const newServer =
-      new StaticServer(
-        8080,
-        sharedDirectory
-      );
-
-    const url =
-      await newServer.start();
-
-    server = newServer;
-
-    console.log(
-      "Local server started:",
-      url
-    );
-
-    return url;
+    throw lastError || new Error("Failed to bind local server to any candidate port.");
   } catch (error) {
-    console.log(
-      "Failed to start local server:",
-      error
-    );
-
+    console.log("Failed to start local server:", error);
     throw error;
   }
 }

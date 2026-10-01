@@ -6,19 +6,20 @@ import { useState } from "react";
 import {
   Modal,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import BottomNavigation from "../components/BottomNavigation";
 
 export default function HomeScreen() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#055248]">
+    <SafeAreaView className="flex-1 bg-[#055248]" edges={["top", "left", "right"]}>
       <StatusBar style="light" />
 
       {/* Top Banner Header Card */}
@@ -369,6 +370,8 @@ export default function HomeScreen() {
           </View>
         </View>
       </Modal>
+
+      <BottomNavigation currentTab="home" />
     </SafeAreaView>
   );
 }

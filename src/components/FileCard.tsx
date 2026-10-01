@@ -1,3 +1,4 @@
+import React, { memo } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { SelectedFile } from "../types/file";
@@ -8,7 +9,7 @@ type FileCardProps = {
   onRemove: (id: string) => void;
 };
 
-export default function FileCard({
+function FileCardComponent({
   file,
   onRemove,
 }: FileCardProps) {
@@ -50,3 +51,5 @@ export default function FileCard({
     </View>
   );
 }
+
+export default memo(FileCardComponent);

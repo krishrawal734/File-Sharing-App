@@ -116,6 +116,9 @@ export default function ReceiveTransferScreen() {
       new Set()
     );
 
+  const autoStartedRef =
+    useRef(false);
+
 
   /*
    * --------------------------------
@@ -558,13 +561,28 @@ export default function ReceiveTransferScreen() {
           )
         );
 
-        setMessage(
-          `${serverFiles.length} file${
-            serverFiles.length !== 1
-              ? "s"
-              : ""
-          } ready to download.`
-        );
+        if (!autoStartedRef.current) {
+          autoStartedRef.current = true;
+
+          setMessage(
+            `Auto-downloading ${serverFiles.length} file${
+              serverFiles.length !== 1 ? "s" : ""
+            }...`
+          );
+
+          downloadFile(
+            serverFiles[0],
+            0
+          );
+        } else {
+          setMessage(
+            `${serverFiles.length} file${
+              serverFiles.length !== 1
+                ? "s"
+                : ""
+            } ready.`
+          );
+        }
       } catch (error: any) {
         console.log(
           "Server connection error:",

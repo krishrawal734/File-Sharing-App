@@ -50,12 +50,12 @@ export default function SelectFilesScreen() {
       // Remove files from previous transfer
       await clearSharedFiles();
 
-      for (const file of selectedFiles) {
-        console.log("Copying file:", file.name);
-
-        await copyFileToServer(file.uri, file.name);
-
-        console.log("Copied successfully:", file.name);
+      const BATCH_SIZE = 4;
+      for (let i = 0; i < selectedFiles.length; i += BATCH_SIZE) {
+        const chunk = selectedFiles.slice(i, i + BATCH_SIZE);
+        await Promise.all(
+          chunk.map((file) => copyFileToServer(file.uri, file.name))
+        );
       }
 
       setFiles((current) => [...current, ...selectedFiles]);
@@ -178,12 +178,12 @@ export default function SelectFilesScreen() {
         <View className="gap-3">
           <PrimaryButton
             title={copying ? "Copying..." : "📷 Photos & Videos"}
-            onPress={copying ? undefined : pickPhotosAndVideos}
+            onPress={copying ? () => {} : pickPhotosAndVideos}
           />
 
           <PrimaryButton
             title={copying ? "Please wait..." : "📄 Documents & Files"}
-            onPress={copying ? undefined : pickDocuments}
+            onPress={copying ? () => {} : pickDocuments}
           />
         </View>
 

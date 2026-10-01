@@ -1,10 +1,10 @@
 import { router } from "expo-router";
-import { SafeAreaView, View ,  Pressable, Text } from "react-native";
+import { View, Pressable, Text } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 
 
 import AppHeader from "../../components/AppHeader";
-import PrimaryButton from "../../components/PrimaryButton";
 
 export default function ReceiveScreen() {
   return (

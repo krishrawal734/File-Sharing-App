@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import {
   Alert,
-  SafeAreaView,
   ScrollView,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 
 import AppHeader from "../../components/AppHeader";
