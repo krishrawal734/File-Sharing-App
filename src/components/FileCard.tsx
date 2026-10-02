@@ -1,6 +1,6 @@
 import React, { memo } from "react";
-import { Pressable, Text, View } from "react-native";
-
+import { TouchableOpacity, Text, View } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { SelectedFile } from "../types/file";
 import { formatFileSize } from "../utils/fileUtils";
 
@@ -9,47 +9,49 @@ type FileCardProps = {
   onRemove: (id: string) => void;
 };
 
-function FileCardComponent({
-  file,
-  onRemove,
-}: FileCardProps) {
+function FileCardComponent({ file, onRemove }: FileCardProps) {
+  const getIcon = () => {
+    switch (file.type) {
+      case "image":
+        return "image";
+      case "video":
+        return "video";
+      case "audio":
+        return "music-note";
+      case "document":
+        return "file-document-outline";
+      default:
+        return "file-outline";
+    }
+  };
+
   return (
-    <View className="mb-3 flex-row items-center rounded-2xl bg-white p-4">
-      <View className="mr-3 h-12 w-12 items-center justify-center rounded-xl bg-blue-50">
-        <Text className="text-xl">
-          {file.type === "image"
-            ? "🖼️"
-            : file.type === "video"
-            ? "🎥"
-            : file.type === "audio"
-            ? "🎵"
-            : "📄"}
-        </Text>
+    <View className="mb-3 flex-row items-center justify-between rounded-2xl bg-[#141e24] border border-[#1f2d36] p-3.5 shadow-md">
+      <View className="flex-row items-center gap-3.5 flex-1 pr-2">
+        <View className="w-12 h-12 rounded-xl bg-[#0d8274]/20 border border-[#0d8274]/40 items-center justify-center">
+          <MaterialCommunityIcons name={getIcon()} size={22} color="#0d8274" />
+        </View>
+
+        <View className="flex-1">
+          <Text className="text-white text-sm font-bold" numberOfLines={1}>
+            {file.name}
+          </Text>
+          <Text className="text-slate-400 text-xs mt-0.5">
+            {formatFileSize(file.size)} • {file.type.toUpperCase()}
+          </Text>
+        </View>
       </View>
 
-      <View className="flex-1">
-        <Text
-          className="font-semibold text-slate-900"
-          numberOfLines={1}
-        >
-          {file.name}
-        </Text>
-
-        <Text className="mt-1 text-sm text-slate-500">
-          {formatFileSize(file.size)}
-        </Text>
-      </View>
-
-      <Pressable
+      <TouchableOpacity
         onPress={() => onRemove(file.id)}
-        className="ml-3 rounded-full bg-red-50 px-3 py-2"
+        activeOpacity={0.7}
+        className="w-8 h-8 rounded-full bg-red-500/15 border border-red-500/30 items-center justify-center"
       >
-        <Text className="font-bold text-red-600">
-          ✕
-        </Text>
-      </Pressable>
+        <MaterialCommunityIcons name="close" size={16} color="#ef4444" />
+      </TouchableOpacity>
     </View>
   );
 }
 
+FileCardComponent.displayName = "FileCardComponent";
 export default memo(FileCardComponent);

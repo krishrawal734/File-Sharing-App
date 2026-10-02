@@ -77,7 +77,7 @@ export async function startLocalServer() {
 
       try {
         await server.stop();
-      } catch (e) {
+      } catch {
         // Ignore stop error during reset
       }
       server = null;

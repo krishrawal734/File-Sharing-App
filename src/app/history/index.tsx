@@ -1,14 +1,17 @@
-import { useCallback, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   Alert,
-  Pressable,
   ScrollView,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
 import { useFocusEffect } from "expo-router";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
+import AppHeader from "../../components/AppHeader";
 import {
   clearTransferHistory,
   getTransferHistory,
@@ -16,38 +19,23 @@ import {
 } from "../../database/database";
 
 export default function HistoryScreen() {
-  const [history, setHistory] = useState<
-    TransferHistory[]
-  >([]);
-
-  const [loading, setLoading] =
-    useState(true);
+  const [history, setHistory] = useState<TransferHistory[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // --------------------------------
   // LOAD HISTORY
   // --------------------------------
-
   const loadHistory = async () => {
     try {
       setLoading(true);
-
-      const records =
-        await getTransferHistory();
-
+      const records = await getTransferHistory();
       setHistory(records);
     } catch (error) {
-      console.log(
-        "Failed to load history:",
-        error
-      );
+      console.log("Failed to load history:", error);
     } finally {
       setLoading(false);
     }
   };
-
-  // --------------------------------
-  // LOAD WHEN SCREEN OPENS
-  // --------------------------------
 
   useFocusEffect(
     useCallback(() => {
@@ -58,112 +46,93 @@ export default function HistoryScreen() {
   // --------------------------------
   // FORMAT FILE SIZE
   // --------------------------------
-
-  const formatBytes = (
-    bytes: number
-  ) => {
-    if (
-      !bytes ||
-      bytes <= 0
-    ) {
+  const formatBytes = (bytes: number) => {
+    if (!bytes || bytes <= 0) {
       return "0 B";
     }
-
-    const units = [
-      "B",
-      "KB",
-      "MB",
-      "GB",
-    ];
-
-    const index = Math.floor(
-      Math.log(bytes) /
-        Math.log(1024)
-    );
-
-    const value =
-      bytes /
-      Math.pow(
-        1024,
-        index
-      );
-
-    return `${value.toFixed(2)} ${
-      units[index] || "GB"
-    }`;
+    const units = ["B", "KB", "MB", "GB"];
+    const index = Math.floor(Math.log(bytes) / Math.log(1024));
+    const value = bytes / Math.pow(1024, index);
+    return `${value.toFixed(2)} ${units[index] || "GB"}`;
   };
 
   // --------------------------------
   // FORMAT DATE
   // --------------------------------
-
-  const formatDate = (
-    date: string
-  ) => {
-    const parsedDate =
-      new Date(date);
-
-    return parsedDate.toLocaleString();
+  const formatDate = (dateStr: string) => {
+    try {
+      const parsedDate = new Date(dateStr);
+      return parsedDate.toLocaleString(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return dateStr;
+    }
   };
 
   // --------------------------------
-  // STATUS COLOR
+  // STATUS BADGE CONFIG
   // --------------------------------
-
-  const getStatusColor = (
-    status: TransferHistory["status"]
-  ) => {
+  const getStatusBadge = (status: TransferHistory["status"]) => {
     switch (status) {
       case "completed":
-        return "text-green-600";
-
+        return {
+          bg: "bg-[#0d8274]/20",
+          border: "border-[#0d8274]/40",
+          text: "text-[#10b981]",
+          label: "Completed",
+          icon: "check-circle-outline" as const,
+        };
       case "failed":
-        return "text-red-600";
-
+        return {
+          bg: "bg-red-500/10",
+          border: "border-red-500/30",
+          text: "text-red-400",
+          label: "Failed",
+          icon: "alert-circle-outline" as const,
+        };
       case "cancelled":
-        return "text-orange-600";
-
+        return {
+          bg: "bg-amber-500/10",
+          border: "border-amber-500/30",
+          text: "text-amber-400",
+          label: "Cancelled",
+          icon: "close-circle-outline" as const,
+        };
       default:
-        return "text-slate-600";
+        return {
+          bg: "bg-slate-800",
+          border: "border-slate-700",
+          text: "text-slate-400",
+          label: status,
+          icon: "clock-outline" as const,
+        };
     }
   };
 
   // --------------------------------
   // CLEAR HISTORY
   // --------------------------------
-
   const handleClearHistory = () => {
     Alert.alert(
       "Clear History",
       "Are you sure you want to delete all transfer history?",
       [
+        { text: "Cancel", style: "cancel" },
         {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Clear",
+          text: "Clear All",
           style: "destructive",
           onPress: async () => {
             try {
               await clearTransferHistory();
-
               setHistory([]);
-
-              Alert.alert(
-                "History Cleared",
-                "All transfer history has been deleted."
-              );
+              Alert.alert("Success", "All transfer records deleted.");
             } catch (error) {
-              console.log(
-                "Clear history error:",
-                error
-              );
-
-              Alert.alert(
-                "Error",
-                "Could not clear history."
-              );
+              console.log("Clear history error:", error);
+              Alert.alert("Error", "Could not clear history.");
             }
           },
         },
@@ -171,166 +140,124 @@ export default function HistoryScreen() {
     );
   };
 
-  // --------------------------------
-  // UI
-  // --------------------------------
-
   return (
-    <SafeAreaView className="flex-1 bg-slate-50">
-      <View className="flex-1 px-5 pt-8">
+    <SafeAreaView className="flex-1 bg-[#090d10]" edges={["top", "left", "right"]}>
+      <StatusBar style="light" />
 
-        {/* HEADER */}
-
-        <View className="mb-5 flex-row items-center justify-between">
-
-          <View>
-            <Text className="text-2xl font-bold text-slate-900">
-              Transfer History
-            </Text>
-
-            <Text className="mt-1 text-slate-500">
-              Your previous file transfers
-            </Text>
-          </View>
-
-          {history.length > 0 && (
-            <Pressable
-              onPress={
-                handleClearHistory
-              }
-              className="rounded-xl bg-red-50 px-4 py-2"
-            >
-              <Text className="font-semibold text-red-600">
-                Clear
-              </Text>
-            </Pressable>
-          )}
-
-        </View>
-
-        {/* LOADING */}
-
-        {loading ? (
-
-          <View className="flex-1 items-center justify-center">
-
-            <Text className="text-slate-500">
-              Loading history...
-            </Text>
-
-          </View>
-
-        ) : history.length === 0 ? (
-
-          /* EMPTY STATE */
-
-          <View className="flex-1 items-center justify-center">
-
-            <View className="mb-4 h-20 w-20 items-center justify-center rounded-full bg-blue-50">
-              <Text className="text-3xl">
-                📂
-              </Text>
-            </View>
-
-            <Text className="text-lg font-semibold text-slate-800">
-              No Transfer History
-            </Text>
-
-            <Text className="mt-2 text-center text-slate-500">
-              Files you receive or send will
-              appear here.
-            </Text>
-
-          </View>
-
-        ) : (
-
-          /* HISTORY LIST */
-
-          <ScrollView
-            showsVerticalScrollIndicator={
-              false
-            }
-            contentContainerStyle={{
-              paddingBottom: 30,
-            }}
-          >
-
-            {history.map((item) => (
-
-              <View
-                key={item.id}
-                className="mb-3 rounded-2xl bg-white p-4"
+      {/* HEADER */}
+      <View className="px-4 border-b border-[#1f2d36] bg-[#0c1318]">
+        <AppHeader
+          title="Transfer History"
+          subtitle="Log of sent and received transfers"
+          rightElement={
+            history.length > 0 ? (
+              <TouchableOpacity
+                onPress={handleClearHistory}
+                activeOpacity={0.7}
+                className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 flex-row items-center gap-1"
               >
+                <MaterialCommunityIcons name="trash-can-outline" size={16} color="#f87171" />
+                <Text className="text-red-400 text-xs font-semibold">Clear</Text>
+              </TouchableOpacity>
+            ) : undefined
+          }
+        />
+      </View>
 
-                {/* TOP ROW */}
+      <View className="flex-1 p-4">
+        {/* LOADING STATE */}
+        {loading ? (
+          <View className="flex-1 items-center justify-center">
+            <MaterialCommunityIcons name="loading" size={32} color="#0d8274" />
+            <Text className="text-slate-400 text-sm mt-3">Loading history...</Text>
+          </View>
+        ) : history.length === 0 ? (
+          /* EMPTY STATE */
+          <View className="flex-1 items-center justify-center p-6">
+            <View className="w-20 h-20 rounded-full bg-[#141e24] border border-[#1f2d36] items-center justify-center mb-4">
+              <MaterialCommunityIcons name="history" size={38} color="#0d8274" />
+            </View>
+            <Text className="text-white text-lg font-bold text-center">No Transfer History</Text>
+            <Text className="text-slate-400 text-sm text-center mt-1 leading-5">
+              Files you send or receive across devices will appear here automatically.
+            </Text>
+          </View>
+        ) : (
+          /* HISTORY LIST */
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 40 }}
+          >
+            {history.map((item) => {
+              const badge = getStatusBadge(item.status);
+              const isReceived = item.direction === "received";
 
-                <View className="flex-row items-center">
+              return (
+                <View
+                  key={item.id}
+                  className="mb-3 rounded-2xl bg-[#141e24] border border-[#1f2d36] p-4"
+                >
+                  {/* TOP ROW */}
+                  <View className="flex-row items-center justify-between mb-3">
+                    <View className="flex-row items-center gap-2">
+                      <View
+                        className={`w-8 h-8 rounded-lg items-center justify-center ${
+                          isReceived ? "bg-[#0d8274]/20" : "bg-blue-500/20"
+                        }`}
+                      >
+                        <MaterialCommunityIcons
+                          name={isReceived ? "arrow-bottom-left" : "arrow-top-right"}
+                          size={18}
+                          color={isReceived ? "#10b981" : "#60a5fa"}
+                        />
+                      </View>
+                      <Text className="text-slate-300 text-xs font-semibold uppercase tracking-wider">
+                        {isReceived ? "Received" : "Sent"}
+                      </Text>
+                    </View>
 
-                  <View className="mr-4 h-12 w-12 items-center justify-center rounded-xl bg-blue-50">
-                    <Text className="text-xl">
-                      📄
-                    </Text>
-                  </View>
-
-                  <View className="flex-1">
-
-                    <Text
-                      className="font-semibold text-slate-900"
-                      numberOfLines={1}
+                    {/* STATUS BADGE */}
+                    <View
+                      className={`px-2.5 py-1 rounded-full border flex-row items-center gap-1 ${badge.bg} ${badge.border}`}
                     >
-                      {item.fileName}
-                    </Text>
-
-                    <Text className="mt-1 text-sm text-slate-500">
-                      {formatBytes(
-                        item.fileSize
-                      )}
-                    </Text>
-
+                      <MaterialCommunityIcons
+                        name={badge.icon}
+                        size={12}
+                        color={
+                          badge.text.includes("emerald") || badge.text.includes("10b981")
+                            ? "#10b981"
+                            : badge.text.includes("red")
+                            ? "#f87171"
+                            : "#fbbf24"
+                        }
+                      />
+                      <Text className={`text-[11px] font-semibold ${badge.text}`}>
+                        {badge.label}
+                      </Text>
+                    </View>
                   </View>
 
-                </View>
-
-                {/* DETAILS */}
-
-                <View className="mt-4 flex-row items-center justify-between">
-
-                  <View>
-
-                    <Text
-                      className={`font-semibold capitalize ${getStatusColor(
-                        item.status
-                      )}`}
-                    >
-                      {item.status}
-                    </Text>
-
-                    <Text className="mt-1 text-xs text-slate-400">
-                      {item.direction ===
-                      "received"
-                        ? "Received"
-                        : "Sent"}
-                    </Text>
-
+                  {/* FILE INFO */}
+                  <View className="flex-row items-center gap-3">
+                    <View className="w-10 h-10 rounded-xl bg-[#090d10] border border-[#1f2d36] items-center justify-center">
+                      <MaterialCommunityIcons name="file-document-outline" size={22} color="#0d8274" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-white text-sm font-semibold" numberOfLines={1}>
+                        {item.fileName}
+                      </Text>
+                      <View className="flex-row items-center gap-2 mt-1">
+                        <Text className="text-slate-400 text-xs">{formatBytes(item.fileSize)}</Text>
+                        <Text className="text-slate-600 text-xs">•</Text>
+                        <Text className="text-slate-400 text-xs">{formatDate(item.date)}</Text>
+                      </View>
+                    </View>
                   </View>
-
-                  <Text className="text-xs text-slate-400">
-                    {formatDate(
-                      item.date
-                    )}
-                  </Text>
-
                 </View>
-
-              </View>
-
-            ))}
-
+              );
+            })}
           </ScrollView>
-
         )}
-
       </View>
     </SafeAreaView>
   );

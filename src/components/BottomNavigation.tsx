@@ -4,7 +4,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-type TabName = "home" | "photos" | "videos" | "music" | "downloads";
+export type TabName = "home" | "photos" | "videos" | "music";
 
 interface TabItem {
   id: TabName;
@@ -43,13 +43,6 @@ const TABS: TabItem[] = [
     activeIcon: "music-note",
     route: "/music",
   },
-  {
-    id: "downloads",
-    label: "Downloads",
-    icon: "download-outline",
-    activeIcon: "download",
-    route: "/downloads",
-  },
 ];
 
 interface BottomNavigationProps {
@@ -63,7 +56,7 @@ function BottomNavigationComponent({ currentTab }: BottomNavigationProps) {
   return (
     <View
       style={{ paddingBottom }}
-      className="flex-row bg-[#0b1317] border-t border-slate-800/80 pt-2.5 px-2 justify-around items-center z-30"
+      className="flex-row bg-[#0c1318] border-t border-[#18242c] pt-2 px-2 justify-around items-center z-30"
     >
       {TABS.map((tab) => {
         const isActive = tab.id === currentTab;
@@ -78,14 +71,20 @@ function BottomNavigationComponent({ currentTab }: BottomNavigationProps) {
             }}
             className="items-center justify-center flex-1 py-1"
           >
-            <MaterialCommunityIcons
-              name={isActive ? tab.activeIcon : tab.icon}
-              size={23}
-              color={isActive ? "#0d8274" : "#64748b"}
-            />
+            <View
+              className={`items-center justify-center px-3 py-1 rounded-full ${
+                isActive ? "bg-[#0d8274]/20 border border-[#0d8274]/40" : ""
+              }`}
+            >
+              <MaterialCommunityIcons
+                name={isActive ? tab.activeIcon : tab.icon}
+                size={22}
+                color={isActive ? "#0d8274" : "#64748b"}
+              />
+            </View>
             <Text
-              className={`text-[11px] mt-1 font-medium ${
-                isActive ? "text-[#0d8274] font-semibold" : "text-slate-400"
+              className={`text-[11px] mt-0.5 font-medium ${
+                isActive ? "text-[#0d8274] font-bold" : "text-slate-400"
               }`}
             >
               {tab.label}

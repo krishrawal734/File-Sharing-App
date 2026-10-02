@@ -32,8 +32,13 @@ export function formatFileSize(
 export function getFileExtension(
   fileName: string
 ): string {
+  const cleanName = fileName
+    .replace(/\s*\([\d.]+\s*(?:Bytes|B|KB|MB|GB|TB)\)/gi, "")
+    .split("?")[0]
+    .trim();
+
   const parts =
-    fileName.split(".");
+    cleanName.split(".");
 
   if (parts.length <= 1) {
     return "";

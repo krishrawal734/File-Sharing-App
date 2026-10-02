@@ -22,7 +22,7 @@ import {
 
 import * as FileSystem from "expo-file-system/legacy";
 
-import * as MediaLibrary from "expo-media-library";
+import * as MediaLibrary from "expo-media-library/legacy";
 
 import {
   isMediaFile,
@@ -235,11 +235,6 @@ export default function ReceiveTransferScreen() {
           "completed",
           "received"
         );
-
-        console.log(
-          "Transfer history saved:",
-          fileName
-        );
       } catch (error) {
         console.log(
           "History save error:",
@@ -262,27 +257,59 @@ export default function ReceiveTransferScreen() {
     ) => {
       try {
         console.log(
-          "Requesting media permission..."
-        );
-
-        const permission =
-          await MediaLibrary.requestPermissionsAsync();
-
-        if (!permission.granted) {
-          throw new Error(
-            "Gallery permission was not granted."
-          );
-        }
-
-        console.log(
           "Creating gallery asset:",
           fileName
         );
 
-        const asset =
-          await MediaLibrary.createAssetAsync(
-            fileUri
+        let asset: MediaLibrary.Asset;
+
+        try {
+          asset =
+            await MediaLibrary.createAssetAsync(
+              fileUri
+            );
+        } catch {
+          console.log(
+            "Direct save requires permission, checking permissions..."
           );
+
+          let permission =
+            await MediaLibrary.getPermissionsAsync(
+              true
+            );
+
+          if (!permission.granted) {
+            permission =
+              await MediaLibrary.getPermissionsAsync(
+                false
+              );
+          }
+
+          if (!permission.granted) {
+            permission =
+              await MediaLibrary.requestPermissionsAsync(
+                true
+              );
+          }
+
+          if (!permission.granted) {
+            permission =
+              await MediaLibrary.requestPermissionsAsync(
+                false
+              );
+          }
+
+          if (!permission.granted) {
+            throw new Error(
+              "Gallery permission was not granted."
+            );
+          }
+
+          asset =
+            await MediaLibrary.createAssetAsync(
+              fileUri
+            );
+        }
 
         console.log(
           "Gallery asset created:",
@@ -294,31 +321,38 @@ export default function ReceiveTransferScreen() {
          * a File Sharing folder.
          */
 
-        let album =
-          await MediaLibrary.getAlbumAsync(
-            "File Sharing"
-          );
+        try {
+          let album =
+            await MediaLibrary.getAlbumAsync(
+              "File Sharing"
+            );
 
-        if (!album) {
-          album =
-            await MediaLibrary.createAlbumAsync(
-              "File Sharing",
-              asset,
+          if (!album) {
+            album =
+              await MediaLibrary.createAlbumAsync(
+                "File Sharing",
+                asset,
+                false
+              );
+
+            console.log(
+              "File Sharing album created."
+            );
+          } else {
+            await MediaLibrary.addAssetsToAlbumAsync(
+              [asset],
+              album,
               false
             );
 
+            console.log(
+              "Asset added to File Sharing album."
+            );
+          }
+        } catch (albumError) {
           console.log(
-            "File Sharing album created."
-          );
-        } else {
-          await MediaLibrary.addAssetsToAlbumAsync(
-            [asset],
-            album,
-            false
-          );
-
-          console.log(
-            "Asset added to File Sharing album."
+            "Could not group into File Sharing album, saved to main gallery:",
+            albumError
           );
         }
 
@@ -408,7 +442,11 @@ export default function ReceiveTransferScreen() {
         const cleanContent =
           content
             .replace(
-              /\([^)]*MB\)/gi,
+              /\s*\([\d.]+\s*(?:Bytes|B|KB|MB|GB|TB)\)/gi,
+              ""
+            )
+            .replace(
+              /\s*\([^)]*MB\)/gi,
               ""
             )
             .trim();
@@ -656,11 +694,11 @@ export default function ReceiveTransferScreen() {
         const temporaryUri =
           `${FileSystem.cacheDirectory}${file.name}`;
 
-        startTimeRef.current =
-          Date.now();
+        // eslint-disable-next-line react-hooks/purity
+        startTimeRef.current = performance.now();
 
-        lastTimeRef.current =
-          Date.now();
+        // eslint-disable-next-line react-hooks/purity
+        lastTimeRef.current = performance.now();
 
         lastBytesRef.current =
           0;
@@ -1226,15 +1264,23 @@ export default function ReceiveTransferScreen() {
    */
 
   useEffect(() => {
+    let isMounted = true;
     if (!serverUrl) {
-      setMessage(
-        "Server URL is missing."
-      );
-
+      setTimeout(() => {
+        if (isMounted) setMessage("Server URL is missing.");
+      }, 0);
       return;
     }
 
-    loadServerFiles();
+    const timer = setTimeout(() => {
+      if (isMounted) loadServerFiles();
+    }, 0);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverUrl]);
 
 
