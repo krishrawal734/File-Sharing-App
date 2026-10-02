@@ -138,6 +138,7 @@ export default function FileManagerScreen() {
     return (
       <TouchableOpacity
         activeOpacity={0.8}
+        
         onPress={() => toggleSelect(item.id)}
         className={`flex-row items-center justify-between p-3.5 mb-2.5 rounded-2xl bg-[#141e24] border ${
           isSelected ? "border-[#0d8274] bg-[#0d8274]/15" : "border-[#1f2d36]"

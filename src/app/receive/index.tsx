@@ -65,11 +65,13 @@ export default function ReceiveScreen() {
         </View>
 
         
+        
 
         {/* Quick Connection Options */}
         <Text className="text-white text-base font-bold mb-3">Connection Options</Text>
 
         <View className="gap-3">
+
           <TouchableOpacity
             onPress={() => router.push("/receive/scan" as any)}
             className="rounded-2xl bg-[#141e24] border border-[#1f2d36] p-4 flex-row items-center justify-between"
