@@ -12,11 +12,11 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as MediaLibrary from "expo-media-library/legacy";
-import { router } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import BottomNavigation from "../../components/BottomNavigation";
 import SearchBar from "../../components/ui/SearchBar";
+import { safeBack } from "../../utils/navigationUtils";
 
 interface Playlist {
   id: string;
@@ -26,7 +26,7 @@ interface Playlist {
 
 export default function MusicScreen() {
   const insets = useSafeAreaInsets();
-  const [activeTab, setActiveTab] = useState<"all" | "playlists" | "tomp3" | "import">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "playlists">("all");
   const [loading, setLoading] = useState(false);
   const [songs, setSongs] = useState<MediaLibrary.Asset[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -169,7 +169,7 @@ export default function MusicScreen() {
         <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center gap-3">
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => safeBack()}
               activeOpacity={0.7}
               className="w-9 h-9 rounded-full bg-[#141e24] border border-[#1f2d36] items-center justify-center"
             >
@@ -200,22 +200,6 @@ export default function MusicScreen() {
           >
             <Text className={`text-xs font-bold ${activeTab === "playlists" ? "text-white" : "text-slate-400"}`}>
               Playlists
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setActiveTab("tomp3")}
-            className={`flex-1 py-1.5 rounded-xl items-center ${activeTab === "tomp3" ? "bg-[#0d8274]" : ""}`}
-          >
-            <Text className={`text-xs font-bold ${activeTab === "tomp3" ? "text-white" : "text-slate-400"}`}>
-              ToMP3
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setActiveTab("import")}
-            className={`flex-1 py-1.5 rounded-xl items-center ${activeTab === "import" ? "bg-[#0d8274]" : ""}`}
-          >
-            <Text className={`text-xs font-bold ${activeTab === "import" ? "text-white" : "text-slate-400"}`}>
-              Import
             </Text>
           </TouchableOpacity>
         </View>
@@ -262,34 +246,6 @@ export default function MusicScreen() {
             ))}
           </View>
         </ScrollView>
-      ) : activeTab === "tomp3" ? (
-        <View className="flex-1 items-center justify-center px-6">
-          <MaterialCommunityIcons name="file-music-outline" size={48} color="#0d8274" />
-          <Text className="text-white text-lg font-bold text-center mt-3">Video to MP3 Converter</Text>
-          <Text className="text-slate-400 text-xs text-center mt-1 leading-5">
-            Extract high quality audio tracks directly from your local video files.
-          </Text>
-          <TouchableOpacity
-            onPress={() => router.push("/videos")}
-            className="mt-5 bg-[#0d8274] px-6 py-3 rounded-2xl"
-          >
-            <Text className="text-white text-sm font-bold">Select Video</Text>
-          </TouchableOpacity>
-        </View>
-      ) : activeTab === "import" ? (
-        <View className="flex-1 items-center justify-center px-6">
-          <MaterialCommunityIcons name="folder-music-outline" size={48} color="#38bdf8" />
-          <Text className="text-white text-lg font-bold text-center mt-3">Import Music</Text>
-          <Text className="text-slate-400 text-xs text-center mt-1 leading-5">
-            Import audio tracks from external folders or cloud storage.
-          </Text>
-          <TouchableOpacity
-            onPress={() => router.push("/send/files")}
-            className="mt-5 bg-[#141e24] border border-[#1f2d36] px-6 py-3 rounded-2xl"
-          >
-            <Text className="text-white text-sm font-bold">Browse Files</Text>
-          </TouchableOpacity>
-        </View>
       ) : (
         /* All Music List */
         <View className="flex-1 px-4 pt-3">

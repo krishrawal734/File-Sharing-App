@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, Alert } from "react-native";
+import React from "react";
+import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -8,29 +8,6 @@ import { router } from "expo-router";
 import AppHeader from "../../components/AppHeader";
 
 export default function ReceiveScreen() {
-  const [incomingRequest, setIncomingRequest] = useState<{
-    senderName: string;
-    filesCountText: string;
-    totalSizeText: string;
-  } | null>({
-    senderName: "Krish's Phone",
-    filesCountText: "24 Photos, 3 Videos, 5 Documents",
-    totalSizeText: "4.8 GB",
-  });
-
-  const handleAcceptRequest = () => {
-    Alert.alert(
-      "Accept Transfer",
-      `Receiving files from ${incomingRequest?.senderName}...`,
-      [
-        {
-          text: "OK",
-          onPress: () => router.push("/receive/transfer" as any),
-        },
-      ]
-    );
-  };
-
   return (
     <SafeAreaView className="flex-1 bg-[#090d10]" edges={["top", "left", "right"]}>
       <StatusBar style="light" />

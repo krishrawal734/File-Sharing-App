@@ -24,6 +24,7 @@ import BottomNavigation from "../../components/BottomNavigation";
 import SearchBar from "../../components/ui/SearchBar";
 import { SelectedFile } from "../../types/file";
 import { clearSharedFiles, copyFileToServer } from "../../server/localServer";
+import { safeBack } from "../../utils/navigationUtils";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const NUM_COLUMNS = SCREEN_WIDTH > 600 ? 5 : 4;
@@ -476,7 +477,7 @@ export default function PhotosScreen() {
       <SafeAreaView className="flex-1 bg-[#090d10] justify-between" edges={["top", "left", "right"]}>
         <View className="px-5 pt-4 pb-2 border-b border-[#1f2d36] flex-row items-center gap-3">
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => safeBack()}
             className="w-10 h-10 rounded-full bg-[#141e24] items-center justify-center"
           >
             <MaterialCommunityIcons name="arrow-left" size={22} color="#FFFFFF" />
@@ -514,7 +515,7 @@ export default function PhotosScreen() {
         <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center gap-3">
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => safeBack()}
               activeOpacity={0.7}
               className="w-9 h-9 rounded-full bg-[#141e24] border border-[#1f2d36] items-center justify-center"
             >

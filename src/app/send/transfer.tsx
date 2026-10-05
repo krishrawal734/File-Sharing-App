@@ -3,10 +3,10 @@ import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { router } from "expo-router";
 
 import AppHeader from "../../components/AppHeader";
 import CircularProgress from "../../components/ui/CircularProgress";
+import { safeBack } from "../../utils/navigationUtils";
 
 export default function TransferScreen() {
   const [paused, setPaused] = useState(false);
@@ -83,7 +83,7 @@ export default function TransferScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => safeBack()}
               activeOpacity={0.8}
               className="flex-1 bg-red-500/20 border border-red-500/40 py-3 rounded-xl items-center flex-row justify-center gap-1.5"
             >
