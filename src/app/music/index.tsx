@@ -12,11 +12,11 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as MediaLibrary from "expo-media-library/legacy";
+import { router } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import BottomNavigation from "../../components/BottomNavigation";
 import SearchBar from "../../components/ui/SearchBar";
-import { safeBack } from "../../utils/navigationUtils";
 
 interface Playlist {
   id: string;
@@ -169,7 +169,7 @@ export default function MusicScreen() {
         <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center gap-3">
             <TouchableOpacity
-              onPress={() => safeBack()}
+              onPress={() => router.back()}
               activeOpacity={0.7}
               className="w-9 h-9 rounded-full bg-[#141e24] border border-[#1f2d36] items-center justify-center"
             >

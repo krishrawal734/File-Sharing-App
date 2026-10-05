@@ -12,10 +12,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system/legacy";
+import { router } from "expo-router";
 
 import SearchBar from "../../components/ui/SearchBar";
 import { formatFileSize, getFileExtension } from "../../utils/fileUtils";
-import { safeBack } from "../../utils/navigationUtils";
 
 type CategoryType = "all" | "photos" | "videos" | "music" | "documents" | "archives" | "apks";
 
@@ -174,7 +174,7 @@ export default function FileManagerScreen() {
         <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center gap-3">
             <TouchableOpacity
-              onPress={() => safeBack()}
+              onPress={() => router.back()}
               activeOpacity={0.7}
               className="w-9 h-9 rounded-full bg-[#141e24] border border-[#1f2d36] items-center justify-center"
             >

@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { safeBack } from "../utils/navigationUtils";
+import { router } from "expo-router";
 
 type AppHeaderProps = {
   title: string;
@@ -21,8 +21,10 @@ export default function AppHeader({
   const handleBack = () => {
     if (onBack) {
       onBack();
+    } else if (router.canGoBack()) {
+      router.back();
     } else {
-      safeBack();
+      router.replace("/");
     }
   };
 

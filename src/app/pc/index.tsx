@@ -90,7 +90,7 @@ export default function PCConnectScreen() {
               <Text className="text-white text-sm font-bold">2</Text>
             </View>
             <Text className="text-slate-200 text-sm font-medium flex-1">
-              Open Chrome, Safari or Edge on your PC/Mac.
+              Open Chrome, Safari, or Edge on your PC and enter the URL shown above (e.g. {serverUrl || "http://192.168.x.x:8080"}).
             </Text>
           </View>
 
@@ -99,16 +99,7 @@ export default function PCConnectScreen() {
               <Text className="text-white text-sm font-bold">3</Text>
             </View>
             <Text className="text-slate-200 text-sm font-medium flex-1">
-              Scan the QR Code above or type the web address into your browser.
-            </Text>
-          </View>
-
-          <View className="rounded-2xl bg-[#141e24] border border-[#1f2d36] p-4 flex-row items-center gap-3.5">
-            <View className="w-8 h-8 rounded-full bg-[#0d8274] items-center justify-center">
-              <Text className="text-white text-sm font-bold">4</Text>
-            </View>
-            <Text className="text-slate-200 text-sm font-medium flex-1">
-              Start downloading phone files or sending files to your phone instantly!
+              Enjoy the Web Dashboard in your browser! Filter files by category, preview images, and download files with a single click.
             </Text>
           </View>
         </View>

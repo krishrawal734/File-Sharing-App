@@ -5,7 +5,6 @@ import { StatusBar } from "expo-status-bar";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { safeBack } from "../../utils/navigationUtils";
 
 export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -69,7 +68,7 @@ export default function ScanScreen() {
         {/* Top Header Overlay */}
         <SafeAreaView className="px-4 pt-3 flex-row items-center justify-between z-10 bg-black/40">
           <TouchableOpacity
-            onPress={() => safeBack()}
+            onPress={() => router.back()}
             activeOpacity={0.7}
             className="w-10 h-10 rounded-full bg-black/60 items-center justify-center border border-white/20"
           >

@@ -1,5 +1,7 @@
 import StaticServer from "react-native-local-server";
 import * as FileSystem from "expo-file-system/legacy";
+import { getLocalIpAddress } from "../utils/networkUtils";
+import { getWebDashboardHTML } from "./webDashboard";
 
 let server: StaticServer | null = null;
 
@@ -22,6 +24,38 @@ async function ensureSharedDirectory() {
         intermediates: true,
       }
     );
+  }
+}
+
+/**
+ * Ensure index.html Web Dashboard exists in shared directory
+ */
+export async function ensureWebDashboard() {
+  try {
+    await ensureSharedDirectory();
+    const indexPath = `${sharedDirectory}index.html`;
+    await FileSystem.writeAsStringAsync(indexPath, getWebDashboardHTML(), {
+      encoding: FileSystem.EncodingType.UTF8,
+    });
+    console.log("Web Dashboard created at:", indexPath);
+  } catch (error) {
+    console.log("Failed to write index.html:", error);
+  }
+}
+
+/**
+ * Clean up legacy sample-file.txt if present
+ */
+async function removeLegacySampleFile() {
+  try {
+    const legacyPath = `${sharedDirectory}sample-file.txt`;
+    const info = await FileSystem.getInfoAsync(legacyPath);
+    if (info.exists) {
+      await FileSystem.deleteAsync(legacyPath, { idempotent: true });
+      console.log("Deleted legacy sample-file.txt");
+    }
+  } catch (e) {
+    console.log("Error removing legacy sample file:", e);
   }
 }
 
@@ -60,6 +94,10 @@ export async function clearSharedFiles() {
 export async function startLocalServer() {
   try {
     await ensureSharedDirectory();
+    await removeLegacySampleFile();
+
+    // Write index.html Web Dashboard
+    await ensureWebDashboard();
 
     if (server) {
       try {
@@ -85,15 +123,21 @@ export async function startLocalServer() {
 
     const candidatePorts = [8080, 8085, 8090, 8888, 9090];
     let lastError: any = null;
+    const ipAddress = await getLocalIpAddress();
 
     for (const port of candidatePorts) {
       try {
         console.log(`Attempting to start StaticServer on port ${port}...`);
         const newServer = new StaticServer(port, sharedDirectory);
-        const url = await newServer.start();
+        const startedUrl = await newServer.start();
         server = newServer;
-        console.log(`Local server started successfully on port ${port}:`, url);
-        return url;
+
+        const finalUrl = (ipAddress && ipAddress !== "0.0.0.0")
+          ? `http://${ipAddress}:${port}`
+          : startedUrl;
+
+        console.log(`Local server started successfully on port ${port}:`, finalUrl);
+        return finalUrl;
       } catch (err: any) {
         console.log(`Port ${port} unavailable (${err?.message || err}), trying next port...`);
         lastError = err;

@@ -31,7 +31,6 @@ export default function RootLayout() {
           <Stack.Screen name="photos/index" />
           <Stack.Screen name="videos/index" />
           <Stack.Screen name="music/index" />
-          <Stack.Screen name="downloads/index" />
           <Stack.Screen name="send/index" />
           <Stack.Screen name="send/files" />
           <Stack.Screen name="send/devices" />
