@@ -25,7 +25,7 @@ export async function getDatabase() {
   return database;
 }
 
-// CREATE TABLE
+// CREATE TABLE & INDEXES
 
 export async function initializeDatabase() {
   const db = await getDatabase();
@@ -39,9 +39,12 @@ export async function initializeDatabase() {
       direction TEXT NOT NULL,
       date TEXT NOT NULL
     );
+
+    CREATE INDEX IF NOT EXISTS idx_transfer_date ON transfer_history (date DESC);
+    CREATE INDEX IF NOT EXISTS idx_transfer_status ON transfer_history (status);
   `);
 
-  console.log("Transfer history database initialized.");
+  console.log("Transfer history database initialized with indexes.");
 }
 
 // ADD HISTORY
@@ -50,7 +53,7 @@ export async function addTransferHistory(
   fileName: string,
   fileSize: number,
   status: TransferStatus,
-  direction: "sent" | "received",
+  direction: "sent" | "received"
 ) {
   const db = await getDatabase();
 
@@ -70,7 +73,7 @@ export async function addTransferHistory(
     fileSize,
     status,
     direction,
-    new Date().toISOString(),
+    new Date().toISOString()
   );
 
   console.log("Transfer history saved:", fileName);
@@ -86,7 +89,7 @@ export async function getTransferHistory() {
         SELECT *
         FROM transfer_history
         ORDER BY date DESC;
-      `,
+      `
   );
 
   return result;
@@ -102,7 +105,7 @@ export async function deleteTransferHistory(id: number) {
       DELETE FROM transfer_history
       WHERE id = ?;
     `,
-    id,
+    id
   );
 }
 
@@ -114,7 +117,7 @@ export async function clearTransferHistory() {
   await db.runAsync(
     `
       DELETE FROM transfer_history;
-    `,
+    `
   );
 
   console.log("Transfer history cleared.");

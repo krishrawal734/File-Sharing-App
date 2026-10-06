@@ -1,13 +1,9 @@
-/**
- * Generates the responsive single-page HTML Web Dashboard served to PC browsers over Wi-Fi.
- * Includes "Download All Files" (Direct & ZIP Archive) capabilities.
- */
 export function getWebDashboardHTML(): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>AirDropX — PC Web Transfer</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -17,97 +13,109 @@ export function getWebDashboardHTML(): string {
     .glass-card { background: rgba(20, 30, 36, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(31, 45, 54, 0.9); }
     .glass-nav { background: rgba(12, 19, 24, 0.95); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(31, 45, 54, 0.9); }
     .teal-glow { box-shadow: 0 0 25px rgba(13, 130, 116, 0.2); }
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: #0c1318; }
     ::-webkit-scrollbar-thumb { background: #1f2d36; border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: #0d8274; }
   </style>
 </head>
-<body class="min-h-screen flex flex-col">
-  <!-- Top Navigation Header -->
-  <header class="sticky top-0 z-50 glass-nav px-6 py-4 flex items-center justify-between shadow-xl">
-    <div class="flex items-center space-x-3.5">
-      <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#0d8274] to-[#10b981] flex items-center justify-center text-white font-black text-xl shadow-lg">
+<body class="min-h-screen flex flex-col antialiased selection:bg-[#0d8274] selection:text-white">
+  <!-- Top Responsive Header Navigation -->
+  <header class="sticky top-0 z-50 glass-nav px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-xl">
+    <div class="flex items-center space-x-3">
+      <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-[#0d8274] to-[#10b981] flex items-center justify-center text-white font-black text-lg sm:text-xl shadow-lg shrink-0">
         <i class="fa-solid fa-wifi"></i>
       </div>
-      <div>
-        <h1 class="text-lg font-extrabold text-white tracking-wide">AirDropX Web Transfer</h1>
-        <p class="text-xs text-emerald-400 flex items-center gap-1.5 font-medium">
-          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          Connected via Local Wi-Fi (No Internet Required)
+      <div class="min-w-0 flex-1">
+        <h1 class="text-base sm:text-lg font-extrabold text-white tracking-wide truncate">AirDropX Web Transfer</h1>
+        <p class="text-[11px] sm:text-xs text-emerald-400 flex items-center gap-1.5 font-medium truncate">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+          Connected via Local Wi-Fi
         </p>
       </div>
     </div>
-    <div class="flex items-center gap-2.5">
-      <button onclick="loadFiles()" class="px-3.5 py-2 rounded-xl bg-[#141e24] hover:bg-[#1f2d36] border border-[#1f2d36] text-xs font-semibold text-slate-200 transition flex items-center gap-2">
-        <i class="fa-solid fa-rotate-right"></i> Refresh
+
+    <!-- Actions Header Buttons -->
+    <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pt-1 sm:pt-0">
+      <button id="refreshBtn" onclick="refreshAndClearFiles()" class="px-3.5 py-2 rounded-xl bg-[#141e24] hover:bg-[#1f2d36] border border-[#1f2d36] text-xs font-semibold text-slate-200 transition flex items-center gap-2 whitespace-nowrap shrink-0" title="Clear current shared files and refresh view">
+        <i id="refreshIcon" class="fa-solid fa-rotate-right"></i>
+        <span>Refresh & Clear</span>
       </button>
-      <button onclick="downloadAllDirect()" class="px-3.5 py-2 rounded-xl bg-[#141e24] hover:bg-[#1f2d36] border border-[#0d8274]/40 text-xs font-semibold text-emerald-400 transition flex items-center gap-2">
-        <i class="fa-solid fa-file-arrow-down"></i> Download All (Individual)
+      <button onclick="downloadAllDirect()" class="px-3.5 py-2 rounded-xl bg-[#141e24] hover:bg-[#1f2d36] border border-[#0d8274]/40 text-xs font-semibold text-emerald-400 transition flex items-center gap-2 whitespace-nowrap shrink-0">
+        <i class="fa-solid fa-file-arrow-down"></i>
+        <span class="hidden md:inline">Download All</span> (Direct)
       </button>
-      <button id="downloadZipBtn" onclick="downloadAllZip()" class="px-4 py-2 rounded-xl bg-[#0d8274] hover:bg-[#10b981] text-xs font-bold text-white shadow-lg transition flex items-center gap-2">
-        <i class="fa-solid fa-file-zipper"></i> Download All as ZIP
+      <button id="downloadZipBtn" onclick="downloadAllZip()" class="px-3.5 py-2 rounded-xl bg-[#0d8274] hover:bg-[#10b981] text-xs font-bold text-white shadow-lg transition flex items-center gap-2 whitespace-nowrap shrink-0">
+        <i class="fa-solid fa-file-zipper"></i>
+        <span>Download ZIP</span>
       </button>
     </div>
   </header>
 
-  <!-- Main Web Content -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-6 py-8 space-y-6">
-    <!-- Device Summary Banner -->
-    <div class="glass-card rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 teal-glow">
-      <div class="flex items-center space-x-4">
-        <div class="w-14 h-14 rounded-2xl bg-[#0d8274]/20 border border-[#0d8274]/40 flex items-center justify-center text-[#10b981] text-2xl">
+  <!-- Main Web Content Wrapper -->
+  <main class="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <!-- Responsive Device Summary Banner -->
+    <div class="glass-card rounded-3xl p-5 sm:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-5 teal-glow">
+      <div class="flex items-center space-x-3.5 sm:space-x-4">
+        <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-[#0d8274]/20 border border-[#0d8274]/40 flex items-center justify-center text-[#10b981] text-xl sm:text-2xl shrink-0">
           <i class="fa-solid fa-mobile-screen-button"></i>
         </div>
         <div>
-          <h2 class="text-xl font-bold text-white">Android Device Storage</h2>
-          <p class="text-xs text-slate-400 mt-1">Browse, preview, and download files directly from your phone</p>
+          <h2 class="text-lg sm:text-xl font-bold text-white leading-tight">Device Shared Storage</h2>
+          <p class="text-xs text-slate-400 mt-0.5">Browse, search, preview, and download shared files</p>
         </div>
       </div>
-      <div class="flex items-center gap-8">
-        <div class="text-center">
-          <span id="totalFilesCount" class="text-2xl font-black text-emerald-400">0</span>
-          <p class="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">Shared Files</p>
+
+      <!-- Stats Counters -->
+      <div class="grid grid-cols-2 sm:flex items-center gap-4 sm:gap-8 w-full md:w-auto pt-3 md:pt-0 border-t md:border-t-0 border-[#1f2d36]">
+        <div class="text-center bg-[#0c1318]/50 sm:bg-transparent p-2.5 sm:p-0 rounded-2xl">
+          <span id="totalFilesCount" class="text-xl sm:text-2xl font-black text-emerald-400">0</span>
+          <p class="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5 font-bold">Shared Files</p>
         </div>
-        <div class="w-px h-10 bg-[#1f2d36]"></div>
-        <div class="text-center">
-          <span id="totalSizeText" class="text-2xl font-black text-white">0 MB</span>
-          <p class="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">Total Size</p>
+        <div class="hidden sm:block w-px h-10 bg-[#1f2d36]"></div>
+        <div class="text-center bg-[#0c1318]/50 sm:bg-transparent p-2.5 sm:p-0 rounded-2xl">
+          <span id="totalSizeText" class="text-xl sm:text-2xl font-black text-white">0 MB</span>
+          <p class="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5 font-bold">Total Size</p>
         </div>
       </div>
     </div>
 
-    <!-- Search & Category Filters -->
-    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
-      <div class="relative w-full md:w-96">
+    <!-- Responsive Search Bar & Category Filters -->
+    <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3.5">
+      <!-- Search Input -->
+      <div class="relative w-full lg:w-96">
         <i class="fa-solid fa-magnifying-glass absolute left-4 top-3.5 text-slate-400 text-sm"></i>
-        <input id="searchInput" oninput="renderFiles()" type="text" placeholder="Search shared files..." class="w-full bg-[#141e24] border border-[#1f2d36] rounded-xl pl-11 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#0d8274]">
+        <input id="searchInput" oninput="renderFiles()" type="text" placeholder="Search shared files..." class="w-full bg-[#141e24] border border-[#1f2d36] rounded-xl pl-11 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#0d8274] transition">
       </div>
 
-      <div class="flex items-center space-x-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
-        <button onclick="setCategory('all', event)" class="cat-pill active px-4 py-2 rounded-xl text-xs font-bold bg-[#0d8274] text-white transition">All Files</button>
-        <button onclick="setCategory('images', event)" class="cat-pill px-4 py-2 rounded-xl text-xs font-bold bg-[#141e24] border border-[#1f2d36] text-slate-300 hover:border-[#0d8274] transition">Images</button>
-        <button onclick="setCategory('videos', event)" class="cat-pill px-4 py-2 rounded-xl text-xs font-bold bg-[#141e24] border border-[#1f2d36] text-slate-300 hover:border-[#0d8274] transition">Videos</button>
-        <button onclick="setCategory('audio', event)" class="cat-pill px-4 py-2 rounded-xl text-xs font-bold bg-[#141e24] border border-[#1f2d36] text-slate-300 hover:border-[#0d8274] transition">Audio</button>
-        <button onclick="setCategory('docs', event)" class="cat-pill px-4 py-2 rounded-xl text-xs font-bold bg-[#141e24] border border-[#1f2d36] text-slate-300 hover:border-[#0d8274] transition">Documents</button>
+      <!-- Category Filter Pills -->
+      <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+        <button onclick="setCategory('all', event)" class="cat-pill active px-3.5 py-2 rounded-xl text-xs font-bold bg-[#0d8274] text-white transition whitespace-nowrap shrink-0">All Files</button>
+        <button onclick="setCategory('images', event)" class="cat-pill px-3.5 py-2 rounded-xl text-xs font-bold bg-[#141e24] border border-[#1f2d36] text-slate-300 hover:border-[#0d8274] transition whitespace-nowrap shrink-0">Images</button>
+        <button onclick="setCategory('videos', event)" class="cat-pill px-3.5 py-2 rounded-xl text-xs font-bold bg-[#141e24] border border-[#1f2d36] text-slate-300 hover:border-[#0d8274] transition whitespace-nowrap shrink-0">Videos</button>
+        <button onclick="setCategory('audio', event)" class="cat-pill px-3.5 py-2 rounded-xl text-xs font-bold bg-[#141e24] border border-[#1f2d36] text-slate-300 hover:border-[#0d8274] transition whitespace-nowrap shrink-0">Audio</button>
+        <button onclick="setCategory('docs', event)" class="cat-pill px-3.5 py-2 rounded-xl text-xs font-bold bg-[#141e24] border border-[#1f2d36] text-slate-300 hover:border-[#0d8274] transition whitespace-nowrap shrink-0">Documents</button>
       </div>
     </div>
 
-    <!-- File Grid -->
-    <div id="fileGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5"></div>
+    <!-- Responsive File Grid -->
+    <div id="fileGrid" class="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 sm:gap-5"></div>
 
-    <!-- Empty State -->
-    <div id="emptyState" class="hidden glass-card rounded-3xl p-12 text-center">
+    <!-- Empty State Component -->
+    <div id="emptyState" class="hidden glass-card rounded-3xl p-8 sm:p-12 text-center">
       <div class="w-16 h-16 rounded-full bg-[#141e24] border border-[#1f2d36] flex items-center justify-center mx-auto text-slate-500 text-2xl mb-4">
         <i class="fa-regular fa-folder-open"></i>
       </div>
       <h3 class="text-lg font-bold text-white">No Shared Files Found</h3>
-      <p class="text-xs text-slate-400 mt-1">Select files in your Android phone to share them with your PC browser.</p>
+      <p class="text-xs text-slate-400 mt-1 max-w-md mx-auto">Select files on your mobile app to make them visible and downloadable in this PC browser.</p>
     </div>
   </main>
 
-  <footer class="border-t border-[#1f2d36] py-6 text-center text-xs text-slate-500">
-    AirDropX Local Wi-Fi Web Transfer &bull; Powered by React Native Static Server & Expo Network
+  <!-- Footer -->
+  <footer class="border-t border-[#1f2d36] py-5 text-center text-xs text-slate-500 px-4">
+    AirDropX Local Wi-Fi Web Transfer &copy; 2026 — All Rights Reserved
   </footer>
 
   <script>
@@ -125,7 +133,6 @@ export function getWebDashboardHTML(): string {
     function getFileIcon(ext, mime) {
       ext = (ext || '').toLowerCase();
       mime = (mime || '').toLowerCase();
-      
 
       if (mime.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) {
         return { icon: 'fa-image', color: 'text-amber-400', bg: 'bg-amber-400/10' };
@@ -144,15 +151,47 @@ export function getWebDashboardHTML(): string {
 
     async function loadFiles() {
       try {
-        const res = await fetch('/api/files');
-        const data = await res.json();
-        if (data.success && Array.isArray(data.files)) {
-          allFiles = data.files.filter(f => f.name !== 'index.html' && f.name !== 'sample-file.txt');
-          updateStats();
-          renderFiles();
+        const res = await fetch('/files.json?t=' + Date.now());
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            const clearedAt = parseInt(localStorage.getItem('airdropx_cleared_at') || '0', 10);
+
+            allFiles = data.filter(f => {
+              if (f.name === 'index.html' || f.name === 'files.json' || f.name === 'sample-file.txt' || (f.path || '').startsWith('airdropx')) {
+                return false;
+              }
+              if (clearedAt > 0 && f.addedAt && f.addedAt <= clearedAt) {
+                return false;
+              }
+              return true;
+            });
+            updateStats();
+            renderFiles();
+          }
         }
       } catch (err) {
-        console.error('Failed to load files:', err);
+        console.warn('Could not fetch files.json:', err);
+      }
+    }
+
+    async function refreshAndClearFiles() {
+      const refreshIcon = document.getElementById('refreshIcon');
+      if (refreshIcon) refreshIcon.classList.add('fa-spin');
+
+      // Record current clear timestamp
+      localStorage.setItem('airdropx_cleared_at', Date.now().toString());
+
+      // Instantly clear current file list
+      allFiles = [];
+      updateStats();
+      renderFiles();
+
+      // Check for any newly shared files
+      await loadFiles();
+
+      if (refreshIcon) {
+        setTimeout(() => refreshIcon.classList.remove('fa-spin'), 600);
       }
     }
 
@@ -204,7 +243,7 @@ export function getWebDashboardHTML(): string {
 
       filtered.forEach(file => {
         const iconInfo = getFileIcon(file.ext, file.mime);
-        const downloadUrl = file.url || \`/download/\${encodeURIComponent(file.path)}\`;
+        const downloadUrl = file.url || \`/\${encodeURIComponent(file.path)}\`;
         const ext = (file.ext || '').toLowerCase();
         const mime = (file.mime || '').toLowerCase();
         const isImage = mime.startsWith('image/') || ['jpg', 'png', 'jpeg', 'gif', 'webp'].includes(ext);
@@ -223,7 +262,7 @@ export function getWebDashboardHTML(): string {
               </div>
             \` : \`
               <div class="w-full h-28 rounded-xl \${iconInfo.bg} border border-[#1f2d36] flex items-center justify-center mb-3">
-                <i class="fa-solid \${iconInfo.icon} \${iconInfo.color} text-4xl"></i>
+                <i class="fa-solid \${iconInfo.icon} \${iconInfo.color} text-3xl sm:text-4xl"></i>
               </div>
             \`}
             <h3 class="font-bold text-xs text-slate-100 truncate" title="\${file.name}">\${file.name}</h3>
@@ -292,7 +331,7 @@ export function getWebDashboardHTML(): string {
       allFiles.forEach((file, index) => {
         setTimeout(() => {
           const a = document.createElement('a');
-          a.href = file.url || \`/download/\${encodeURIComponent(file.path)}\`;
+          a.href = file.url || \`/\${encodeURIComponent(file.path)}\`;
           a.download = file.name;
           document.body.appendChild(a);
           a.click();

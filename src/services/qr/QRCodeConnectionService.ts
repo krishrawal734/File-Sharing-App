@@ -1,4 +1,4 @@
-import { getLocalIpAddress } from "../../utils/networkUtils";
+ import { getLocalIpAddress } from "../../utils/networkUtils";
 
 export interface QRSessionPayload {
   service: "air-dropx";
@@ -22,6 +22,7 @@ export class QRCodeConnectionService {
     };
 
     return JSON.stringify(payload);
+    
   }
 
   public static parseQRSessionToken(qrString: string): QRSessionPayload | null {

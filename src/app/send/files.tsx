@@ -34,6 +34,7 @@ export default function SelectFilesScreen() {
       for (let i = 0; i < selectedFiles.length; i += BATCH_SIZE) {
         const chunk = selectedFiles.slice(i, i + BATCH_SIZE);
         await Promise.all(chunk.map((file) => copyFileToServer(file.uri, file.name)));
+        await new Promise((res) => setTimeout(res, 10));
       }
 
       setFiles((current) => [...current, ...selectedFiles]);

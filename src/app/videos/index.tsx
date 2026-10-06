@@ -187,6 +187,7 @@ export default function VideosScreen() {
       for (let i = 0; i < preparedFiles.length; i += BATCH_SIZE) {
         const chunk = preparedFiles.slice(i, i + BATCH_SIZE);
         await Promise.all(chunk.map((file) => copyFileToServer(file.uri, file.name)));
+        await new Promise((res) => setTimeout(res, 10));
       }
 
       router.push("/send/devices");
@@ -287,7 +288,7 @@ export default function VideosScreen() {
         <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center gap-3">
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}
               activeOpacity={0.7}
               className="w-9 h-9 rounded-full bg-[#141e24] border border-[#1f2d36] items-center justify-center"
             >

@@ -68,7 +68,7 @@ export default function ScanScreen() {
         {/* Top Header Overlay */}
         <SafeAreaView className="px-4 pt-3 flex-row items-center justify-between z-10 bg-black/40">
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}
             activeOpacity={0.7}
             className="w-10 h-10 rounded-full bg-black/60 items-center justify-center border border-white/20"
           >

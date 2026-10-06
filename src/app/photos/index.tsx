@@ -82,8 +82,8 @@ const PhotoCell = React.memo(
           source={{ uri: asset.uri }}
           style={{ width: itemSize, height: itemSize }}
           contentFit="cover"
-          transition={150}
-          cachePolicy="disk"
+          transition={100}
+          cachePolicy="memory-disk"
           recyclingKey={key}
         />
 
@@ -407,6 +407,7 @@ export default function PhotosScreen() {
       for (let i = 0; i < preparedFiles.length; i += BATCH_SIZE) {
         const chunk = preparedFiles.slice(i, i + BATCH_SIZE);
         await Promise.all(chunk.map((file) => copyFileToServer(file.uri, file.name)));
+        await new Promise((res) => setTimeout(res, 10));
       }
 
       router.push("/send/devices");
@@ -476,7 +477,7 @@ export default function PhotosScreen() {
       <SafeAreaView className="flex-1 bg-[#090d10] justify-between" edges={["top", "left", "right"]}>
         <View className="px-5 pt-4 pb-2 border-b border-[#1f2d36] flex-row items-center gap-3">
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}
             className="w-10 h-10 rounded-full bg-[#141e24] items-center justify-center"
           >
             <MaterialCommunityIcons name="arrow-left" size={22} color="#FFFFFF" />
@@ -514,7 +515,7 @@ export default function PhotosScreen() {
         <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center gap-3">
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}
               activeOpacity={0.7}
               className="w-9 h-9 rounded-full bg-[#141e24] border border-[#1f2d36] items-center justify-center"
             >

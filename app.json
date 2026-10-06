@@ -10,16 +10,19 @@
     "ios": {
       "icon": "./assets/images/icon.png",
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.FileSharingApp",
+      "bundleIdentifier": "com.airdropx.app",
       "infoPlist": {
         "UIFileSharingEnabled": true,
         "LSSupportsOpeningDocumentsInPlace": true,
         "NSPhotoLibraryUsageDescription": "The app accesses your photos to let you save received photos and videos.",
         "NSPhotoLibraryAddUsageDescription": "The app saves received photos and videos directly to your library.",
+        "NSLocalNetworkUsageDescription": "Air-DropX requires local network access to discover nearby devices and transfer files over Wi-Fi.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
+    "jsEngine": "hermes",
     "android": {
+      "enableProguardInReleaseBuilds": true,
       "adaptiveIcon": {
         "backgroundColor": "#05302a",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -27,7 +30,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.FileSharingApp",
+      "package": "com.airdropx.app",
       "permissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
