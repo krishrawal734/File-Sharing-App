@@ -23,7 +23,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import BottomNavigation from "../../components/BottomNavigation";
 import SearchBar from "../../components/ui/SearchBar";
 import { SelectedFile } from "../../types/file";
-import { clearSharedFiles, copyFileToServer, copyMultipleFilesToServer } from "../../server/localServer";
+import { clearSharedFiles, copyMultipleFilesToServer } from "../../server/localServer";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const NUM_COLUMNS = SCREEN_WIDTH > 600 ? 5 : 4;

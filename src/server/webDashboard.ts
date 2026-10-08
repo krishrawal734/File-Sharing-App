@@ -44,6 +44,10 @@ export function getWebDashboardHTML(): string {
         <i id="refreshIcon" class="fa-solid fa-rotate-right"></i>
         <span>Refresh & Clear</span>
       </button>
+      <button onclick="resetClearedFiles()" class="px-3 py-2 rounded-xl bg-[#141e24] hover:bg-[#1f2d36] border border-[#1f2d36] text-xs font-semibold text-slate-400 hover:text-white transition flex items-center gap-1.5 whitespace-nowrap shrink-0" title="Restore hidden files in web view">
+        <i class="fa-solid fa-eye"></i>
+        <span>Show All</span>
+      </button>
       <button onclick="downloadAllDirect()" class="px-3.5 py-2 rounded-xl bg-[#141e24] hover:bg-[#1f2d36] border border-[#0d8274]/40 text-xs font-semibold text-emerald-400 transition flex items-center gap-2 whitespace-nowrap shrink-0">
         <i class="fa-solid fa-file-arrow-down"></i>
         <span class="hidden md:inline">Download All</span> (Direct)
@@ -162,10 +166,21 @@ export function getWebDashboardHTML(): string {
         if (res.ok) {
           const data = await res.json();
           const rawList = Array.isArray(data) ? data : (data && Array.isArray(data.files) ? data.files : []);
+          
+          let clearedNames = [];
+          try {
+            clearedNames = JSON.parse(localStorage.getItem('airdropx_cleared_files') || '[]');
+          } catch {
+            clearedNames = [];
+          }
           const clearedAt = parseInt(localStorage.getItem('airdropx_cleared_at') || '0', 10);
 
           allFiles = rawList.filter(f => {
-            if (f.name === 'index.html' || f.name === 'files.json' || f.name === 'sample-file.txt' || (f.path || '').startsWith('airdropx')) {
+            if (!f || !f.name) return false;
+            if (f.name === 'index.html' || f.name === 'files.json' || f.name === 'sample-file.txt' || (f.path || '').startsWith('airdropx') || f.name.startsWith('airdropx')) {
+              return false;
+            }
+            if (clearedNames.includes(f.name)) {
               return false;
             }
             if (clearedAt > 0 && f.addedAt && f.addedAt <= clearedAt) {
@@ -185,20 +200,38 @@ export function getWebDashboardHTML(): string {
       const refreshIcon = document.getElementById('refreshIcon');
       if (refreshIcon) refreshIcon.classList.add('fa-spin');
 
-      // Record current clear timestamp
-      localStorage.setItem('airdropx_cleared_at', Date.now().toString());
+      try {
+        const now = Date.now();
+        localStorage.setItem('airdropx_cleared_at', now.toString());
 
-      // Instantly clear current file list
-      allFiles = [];
-      updateStats();
-      renderFiles();
+        let existingCleared = [];
+        try {
+          existingCleared = JSON.parse(localStorage.getItem('airdropx_cleared_files') || '[]');
+        } catch {
+          existingCleared = [];
+        }
+        const currentNames = allFiles.map(f => f.name);
+        const updatedCleared = Array.from(new Set([...existingCleared, ...currentNames]));
+        localStorage.setItem('airdropx_cleared_files', JSON.stringify(updatedCleared));
 
-      // Check for any newly shared files
-      await loadFiles();
+        allFiles = [];
+        updateStats();
+        renderFiles();
 
-      if (refreshIcon) {
-        setTimeout(() => refreshIcon.classList.remove('fa-spin'), 600);
+        await loadFiles();
+      } catch (err) {
+        console.warn('Error clearing files:', err);
+      } finally {
+        if (refreshIcon) {
+          setTimeout(() => refreshIcon.classList.remove('fa-spin'), 600);
+        }
       }
+    }
+
+    function resetClearedFiles() {
+      localStorage.removeItem('airdropx_cleared_files');
+      localStorage.removeItem('airdropx_cleared_at');
+      loadFiles();
     }
 
     function updateStats() {

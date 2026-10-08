@@ -14,6 +14,7 @@
       "infoPlist": {
         "UIFileSharingEnabled": true,
         "LSSupportsOpeningDocumentsInPlace": true,
+        "NSCameraUsageDescription": "Air-DropX needs camera access to scan QR codes for quick connection.",
         "NSPhotoLibraryUsageDescription": "The app accesses your photos to let you save received photos and videos.",
         "NSPhotoLibraryAddUsageDescription": "The app saves received photos and videos directly to your library.",
         "NSLocalNetworkUsageDescription": "Air-DropX requires local network access to discover nearby devices and transfer files over Wi-Fi.",

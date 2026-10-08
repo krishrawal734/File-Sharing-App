@@ -1,16 +1,29 @@
-import React, { useState } from "react";
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Alert } from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Alert, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { QRCodeConnectionService } from "../../services/qr/QRCodeConnectionService";
 
 export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [enableTorch, setEnableTorch] = useState(false);
+
+  // Reset scanned state when returning to screen
+  useFocusEffect(
+    useCallback(() => {
+      setScanned(false);
+    }, [])
+  );
+
+  useEffect(() => {
+    if (permission && !permission.granted && permission.canAskAgain) {
+      requestPermission();
+    }
+  }, [permission, requestPermission]);
 
   const handleBarcodeScanned = ({ data }: { data: string }) => {
     if (scanned) return;
@@ -53,6 +66,16 @@ export default function ScanScreen() {
     } as any);
   };
 
+  const handleRequestPermission = async () => {
+    if (permission && !permission.canAskAgain) {
+      Linking.openSettings().catch(() => {
+        Alert.alert("Permission Error", "Please open your phone settings and allow camera access for Air-DropX.");
+      });
+      return;
+    }
+    await requestPermission();
+  };
+
   if (!permission) {
     return (
       <SafeAreaView className="flex-1 bg-[#090d10] items-center justify-center">
@@ -72,79 +95,93 @@ export default function ScanScreen() {
           Air—DropX needs camera access to scan QR codes for quick connection.
         </Text>
         <TouchableOpacity
-          onPress={requestPermission}
+          onPress={handleRequestPermission}
           activeOpacity={0.85}
           className="w-full bg-[#0d8274] py-3.5 rounded-2xl items-center shadow-lg active:bg-[#096358]"
         >
-          <Text className="text-white text-base font-bold">Grant Camera Access</Text>
+          <Text className="text-white text-base font-bold">
+            {!permission.canAskAgain ? "Open Phone Settings" : "Grant Camera Access"}
+          </Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
   }
 
   return (
-    <View className="flex-1 bg-black">
+    <View style={styles.container}>
       <StatusBar style="light" />
 
-      {/* Camera View */}
+      {/* Live Camera View with overlay elements as direct children */}
       <CameraView
-        style={StyleSheet.absoluteFillObject}
+        style={styles.camera}
         facing="back"
         enableTorch={enableTorch}
         barcodeScannerSettings={{
           barcodeTypes: ["qr"],
         }}
         onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
-      />
+      >
+        {/* Top Navigation Header */}
+        <SafeAreaView style={styles.headerSafeArea} edges={["top", "left", "right"]}>
+          <View className="px-4 py-3 flex-row items-center justify-between ">
+            <TouchableOpacity
+              onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}
+              activeOpacity={0.7}
+              className="w-10 h-10 rounded-full bg-black/60 items-center justify-center border border-white/20"
+            >
+              <MaterialCommunityIcons name="arrow-left" size={22} color="#FFFFFF" />
+            </TouchableOpacity>
 
-      {/* Overlay UI Container */}
-      <View className="flex-1 justify-between">
-        {/* Top Header Overlay */}
-        <SafeAreaView className="px-4 pt-3 flex-row items-center justify-between z-10 bg-black/40">
-          <TouchableOpacity
-            onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}
-            activeOpacity={0.7}
-            className="w-10 h-10 rounded-full bg-black/60 items-center justify-center border border-white/20"
-          >
-            <MaterialCommunityIcons name="arrow-left" size={22} color="#FFFFFF" />
-          </TouchableOpacity>
+            <Text className="text-white text-base font-bold">Scan QR Code</Text>
 
-          <Text className="text-white text-lg font-bold">Scan QR Code</Text>
-
-          <TouchableOpacity
-            onPress={() => setEnableTorch(!enableTorch)}
-            activeOpacity={0.7}
-            className={`w-10 h-10 rounded-full items-center justify-center border ${
-              enableTorch ? "bg-[#0d8274] border-white" : "bg-black/60 border-white/20"
-            }`}
-          >
-            <MaterialCommunityIcons
-              name={enableTorch ? "flashlight" : "flashlight-off"}
-              size={20}
-              color="#FFFFFF"
-            />
-          </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setEnableTorch(!enableTorch)}
+              activeOpacity={0.7}
+              className={`w-10 h-10 rounded-full items-center justify-center border ${
+                enableTorch ? "bg-[#0d8274] border-white" : "bg-black/60 border-white/20"
+              }`}
+            >
+              <MaterialCommunityIcons
+                name={enableTorch ? "flashlight" : "flashlight-off"}
+                size={20}
+                color="#FFFFFF"
+              />
+            </TouchableOpacity>
+          </View>
         </SafeAreaView>
 
-        {/* Center Target Frame */}
-        <View className="flex-1 items-center justify-center p-6">
-          <View className="w-[240px] h-[240px] border-2 border-[#0d8274] rounded-3xl relative items-center justify-center bg-[#0d8274]/5">
-            <View className="w-12 h-12 border-t-4 border-l-4 border-[#10b981] absolute -top-1 -left-1 rounded-tl-xl" />
-            <View className="w-12 h-12 border-t-4 border-r-4 border-[#10b981] absolute -top-1 -right-1 rounded-tr-xl" />
-            <View className="w-12 h-12 border-b-4 border-l-4 border-[#10b981] absolute -bottom-1 -left-1 rounded-bl-xl" />
-            <View className="w-12 h-12 border-b-4 border-r-4 border-[#10b981] absolute -bottom-1 -right-1 rounded-br-xl" />
+        {/* Centered Target Scanner Frame & Helper Text */}
+        <View style={styles.finderContainer}>
+          <View className="w-[240px] h-[240px] border-2 border-[#0d8274] rounded-3xl relative items-center justify-center bg-[#0d8274]/10">
+            <View className="w-10 h-10 border-t-4 border-l-4 border-[#10b981] absolute -top-1 -left-1 rounded-tl-xl" />
+            <View className="w-10 h-10 border-t-4 border-r-4 border-[#10b981] absolute -top-1 -right-1 rounded-tr-xl" />
+            <View className="w-10 h-10 border-b-4 border-l-4 border-[#10b981] absolute -bottom-1 -left-1 rounded-bl-xl" />
+            <View className="w-10 h-10 border-b-4 border-r-4 border-[#10b981] absolute -bottom-1 -right-1 rounded-br-xl" />
           </View>
+          <Text className="text-slate-200 text-xs font-medium mt-6 bg-black/70 px-4 py-2 rounded-xl text-center">
+            Align QR code within frame to connect automatically
+          </Text>
         </View>
-
-        {/* Bottom Helper Bar */}
-        <SafeAreaView className="pb-8 items-center justify-center px-6 z-10 bg-black/50">
-          <View className="bg-slate-900/80 border border-slate-700/80 px-5 py-3 rounded-2xl items-center">
-            <Text className="text-white text-xs font-semibold text-center">
-              Align the QR code inside the frame to connect automatically
-            </Text>
-          </View>
-        </SafeAreaView>
-      </View>
+      </CameraView>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#000000",
+  },
+  camera: {
+    flex: 1,
+  },
+  headerSafeArea: {
+    width: "100%",
+  },
+  finderContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingBottom: 40,
+  },
+});

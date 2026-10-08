@@ -31,6 +31,7 @@ export default function DevicesScreen() {
   const [selectedDevice, setSelectedDevice] = useState<NearbyDevice | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(300); // 300 seconds (5 min)
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const activeTokenRef = useRef<string | null>(null);
 
   const {
     discoveredDevices,
@@ -52,6 +53,7 @@ export default function DevicesScreen() {
         const match = url.match(/:(\d+)/);
         const port = match ? parseInt(match[1], 10) : 8080;
         const payload = await QRCodeConnectionService.generateQRSession(port);
+        activeTokenRef.current = payload.token;
         setQrPayload(payload);
         setTimeLeft(Math.max(0, Math.floor((payload.expiresAt - Date.now()) / 1000)));
       }
@@ -63,11 +65,18 @@ export default function DevicesScreen() {
   };
 
   useEffect(() => {
-    startSession();
+    let isMounted = true;
+    const initSession = async () => {
+      if (isMounted) {
+        await startSession();
+      }
+    };
+    initSession();
 
     return () => {
-      if (qrPayload?.token) {
-        QRCodeConnectionService.invalidateSession(qrPayload.token);
+      isMounted = false;
+      if (activeTokenRef.current) {
+        QRCodeConnectionService.invalidateSession(activeTokenRef.current);
       }
       stopLocalServer();
       if (timerRef.current) clearInterval(timerRef.current);

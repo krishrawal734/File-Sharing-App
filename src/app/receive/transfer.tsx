@@ -22,14 +22,11 @@ import {
 
 import * as FileSystem from "expo-file-system/legacy";
 
-import * as MediaLibrary from "expo-media-library/legacy";
-
 import {
   isMediaFile,
 } from "../../utils/fileUtils";
 
 import {
-  saveFile,
   saveFileToGallery,
   saveFileToDownloads,
 } from "../../utils/downloadUtils";

@@ -9,7 +9,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import AppHeader from "../../components/AppHeader";
 import FileCard from "../../components/FileCard";
 import { SelectedFile, FileType } from "../../types/file";
-import { clearSharedFiles, copyFileToServer, copyMultipleFilesToServer, removeSharedFile } from "../../server/localServer";
+import { clearSharedFiles, copyFileToServer, removeSharedFile } from "../../server/localServer";
 
 export default function SelectFilesScreen() {
   const [files, setFiles] = useState<SelectedFile[]>([]);

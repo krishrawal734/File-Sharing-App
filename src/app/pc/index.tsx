@@ -7,7 +7,6 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AppHeader from "../../components/AppHeader";
 import ConnectionQRCode from "../../components/ConnectionQRCode";
 import { startLocalServer, stopLocalServer, clearSharedFiles } from "../../server/localServer";
-import { isEmulatorIp } from "../../utils/networkUtils";
 
 export default function PCConnectScreen() {
   const [serverUrl, setServerUrl] = useState("");

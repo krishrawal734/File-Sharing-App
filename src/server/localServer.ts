@@ -84,6 +84,7 @@ export async function updateFilesJsonIndex() {
           size: info.size || 0,
           mimeType: getMimeTypeFromExt(ext),
           downloadUrl: `/${encodeURIComponent(entry)}`,
+          addedAt: (info as any).modificationTime ? (info as any).modificationTime * 1000 : Date.now(),
         });
       }
     }
@@ -160,7 +161,7 @@ async function removeLegacySampleFile() {
     if (info.exists) {
       await FileSystem.deleteAsync(samplePath, { idempotent: true });
     }
-  } catch (_e) {
+  } catch {
     // Ignore error
   }
 }
