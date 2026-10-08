@@ -1,26 +1,12 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, Switch, Alert } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { router } from "expo-router";
 
 import AppHeader from "../../components/AppHeader";
-import { clearSharedFiles } from "../../server/localServer";
 
 export default function SettingsScreen() {
   const [deviceName, setDeviceName] = useState("Air—DropX Device");
-  const [autoAccept, setAutoAccept] = useState(true);
-  const [nearbyDiscovery, setNearbyDiscovery] = useState(true);
-
-  const handleClearCache = async () => {
-    try {
-      await clearSharedFiles();
-      Alert.alert("Cache Cleared", "Temporary shared file cache cleared successfully.");
-    } catch {
-      Alert.alert("Error", "Could not clear cache.");
-    }
-  };
 
   return (
     <SafeAreaView className="flex-1 bg-[#090d10]" edges={["top", "left", "right"]}>
@@ -61,65 +47,6 @@ export default function SettingsScreen() {
             </View>
             <Text className="text-slate-500 text-xs font-semibold">Dark</Text>
           </View>
-        </View>
-
-        {/* TRANSFER */}
-        <Text className="text-[#0d8274] text-xs font-bold uppercase tracking-wider mb-2">Transfer</Text>
-        <View className="rounded-2xl bg-[#141e24] border border-[#1f2d36] p-4 mb-5 gap-4">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-1 pr-2">
-              <Text className="text-white text-sm font-bold">Auto Accept Trusted Devices</Text>
-              <Text className="text-slate-400 text-xs mt-0.5">Receive files without manual prompt</Text>
-            </View>
-            <Switch
-              value={autoAccept}
-              onValueChange={setAutoAccept}
-              trackColor={{ false: "#1e293b", true: "#0d8274" }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
-
-          <View className="h-[1px] bg-[#1f2d36]" />
-
-          <View className="flex-row items-center justify-between">
-            <View className="flex-1 pr-2">
-              <Text className="text-white text-sm font-bold">Nearby Discovery</Text>
-              <Text className="text-slate-400 text-xs mt-0.5">Allow nearby devices to discover you</Text>
-            </View>
-            <Switch
-              value={nearbyDiscovery}
-              onValueChange={setNearbyDiscovery}
-              trackColor={{ false: "#1e293b", true: "#0d8274" }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
-        </View>
-
-        {/* SECURITY & STORAGE */}
-        <Text className="text-[#0d8274] text-xs font-bold uppercase tracking-wider mb-2">
-          Security & Storage
-        </Text>
-        <View className="rounded-2xl bg-[#141e24] border border-[#1f2d36] p-4 mb-5 gap-4">
-          <TouchableOpacity
-            onPress={() => router.push("/security" as any)}
-            className="flex-row items-center justify-between"
-          >
-            <View>
-              <Text className="text-white text-sm font-bold">Security & App Lock</Text>
-              <Text className="text-slate-400 text-xs mt-0.5">PIN, Biometrics & Encryption</Text>
-            </View>
-            <MaterialCommunityIcons name="chevron-right" size={20} color="#64748b" />
-          </TouchableOpacity>
-
-          <View className="h-[1px] bg-[#1f2d36]" />
-
-          <TouchableOpacity onPress={handleClearCache} className="flex-row items-center justify-between">
-            <View>
-              <Text className="text-white text-sm font-bold">Clear Temporary Cache</Text>
-              <Text className="text-slate-400 text-xs mt-0.5">Remove temporary shared server files</Text>
-            </View>
-            <Text className="text-red-400 text-xs font-bold">Clear</Text>
-          </TouchableOpacity>
         </View>
 
         {/* ABOUT */}

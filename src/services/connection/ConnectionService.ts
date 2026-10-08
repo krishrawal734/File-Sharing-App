@@ -40,7 +40,7 @@ export class ConnectionService {
     const now = Date.now();
     const TIMEOUT_MS = 30000; // 30 seconds connection request timeout
 
-    const session: ConnectionSession = {
+    let session: ConnectionSession = {
       sessionId,
       authToken,
       targetDevice,
@@ -52,7 +52,32 @@ export class ConnectionService {
     this.currentSession = session;
     this.notifyListeners();
 
-    // Start 30-second approval timeout
+    // Probe target device HTTP server availability
+    if (targetDevice.address && targetDevice.port) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+        const targetUrl = `http://${targetDevice.address}:${targetDevice.port}/airdropx/info`;
+        const res = await fetch(targetUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          console.log(`[AirDropX:Connection] Discovery endpoint reachable for ${targetDevice.name}; this is not authentication`);
+          session = {
+            ...session,
+            status: "connected",
+          };
+          this.currentSession = session;
+          this.notifyListeners();
+          return session;
+        }
+      } catch (err: any) {
+        console.log(`[AirDropX:Connection] Probe to ${targetDevice.address} unconfirmed:`, err?.message || err);
+      }
+    }
+
+    // Start 30-second fallback approval timeout if target offline
     if (this.timeoutTimer) clearTimeout(this.timeoutTimer);
     this.timeoutTimer = setTimeout(() => {
       if (this.currentSession && this.currentSession.sessionId === sessionId && this.currentSession.status === "requesting") {
@@ -64,27 +89,6 @@ export class ConnectionService {
         this.notifyListeners();
       }
     }, TIMEOUT_MS);
-
-    // Send HTTP handshake request to target device if IP is present
-    if (targetDevice.address && targetDevice.port) {
-      try {
-        const controller = new AbortController();
-        setTimeout(() => controller.abort(), 4000);
-
-        await fetch(`http://${targetDevice.address}:${targetDevice.port}/airdropx/connect-request`, {
-          method: "POST",
-          headers: { "Content-[#0d8274]": "application/json" },
-          body: JSON.stringify({
-            sessionId,
-            authToken,
-            senderName: "Air-DropX User",
-          }),
-          signal: controller.signal,
-        });
-      } catch {
-        // Target device will handle request via HTTP polling / local socket if offline
-      }
-    }
 
     return session;
   }

@@ -58,92 +58,73 @@ export async function updateFilesJsonIndex() {
 
     const fileList: {
       name: string;
-      path: string;
       size: number;
-      ext: string;
-      url: string;
-      mime: string;
-      addedAt: number;
+      mimeType: string;
+      downloadUrl: string;
     }[] = [];
 
-    for (const name of entries) {
+    for (const entry of entries) {
       if (
-        name === "index.html" ||
-        name === "files.json" ||
-        name === "sample-file.txt" ||
-        name === "airdropx"
+        entry === "index.html" ||
+        entry === "files.json" ||
+        entry === "airdropx" ||
+        entry.startsWith("airdropx") ||
+        entry.startsWith(".")
       ) {
         continue;
       }
 
-      const filePath = `${sharedDirectory}${name}`;
+      const filePath = `${sharedDirectory}${entry}`;
       const info = await FileSystem.getInfoAsync(filePath);
 
       if (info.exists && !info.isDirectory) {
-        const parts = name.split(".");
-        const ext = parts.length > 1 ? parts[parts.length - 1].toLowerCase() : "";
-
+        const ext = entry.split(".").pop()?.toLowerCase() || "";
         fileList.push({
-          name: name,
-          path: name,
+          name: entry,
           size: info.size || 0,
-          ext: ext,
-          url: `/${encodeURIComponent(name)}`,
-          mime: getMimeTypeFromExt(ext),
-          addedAt: info.modificationTime ? info.modificationTime * 1000 : Date.now(),
+          mimeType: getMimeTypeFromExt(ext),
+          downloadUrl: `/${encodeURIComponent(entry)}`,
         });
       }
     }
 
-    const indexPath = `${sharedDirectory}files.json`;
-    await FileSystem.writeAsStringAsync(indexPath, JSON.stringify(fileList), {
-      encoding: FileSystem.EncodingType.UTF8,
-    });
-    console.log(`[AirDropX] Updated files.json index (${fileList.length} files)`);
+    const filesJsonPath = `${sharedDirectory}files.json`;
+    await FileSystem.writeAsStringAsync(
+      filesJsonPath,
+      JSON.stringify({ files: fileList }, null, 2)
+    );
   } catch (error) {
     console.log("Failed to update files.json index:", error);
   }
 }
 
 /**
- * Ensure index.html Web Dashboard exists in shared directory
+ * Ensures index.html Web Dashboard exists
  */
 export async function ensureWebDashboard() {
   try {
     await ensureSharedDirectory();
     const indexPath = `${sharedDirectory}index.html`;
-    await FileSystem.writeAsStringAsync(indexPath, getWebDashboardHTML(), {
-      encoding: FileSystem.EncodingType.UTF8,
-    });
-    await updateFilesJsonIndex();
-    console.log("Web Dashboard created at:", indexPath);
+    const htmlContent = getWebDashboardHTML();
+    await FileSystem.writeAsStringAsync(indexPath, htmlContent);
   } catch (error) {
-    console.log("Failed to write index.html:", error);
+    console.log("Failed to write web dashboard HTML:", error);
   }
 }
 
 /**
- * Ensure /airdropx/info discovery JSON file exists for mobile-to-mobile network discovery
+ * Generates deviceInfo file for server discovery
  */
 export async function ensureDeviceInfoFile(port: number = 8080) {
   try {
     await ensureSharedDirectory();
-    const airdropxDir = `${sharedDirectory}airdropx/`;
-    const dirInfo = await FileSystem.getInfoAsync(airdropxDir);
-    if (!dirInfo.exists) {
-      await FileSystem.makeDirectoryAsync(airdropxDir, { intermediates: true });
-    }
-
-    const deviceName = Device.deviceName || `${Device.brand || "Android"} Phone`;
-    const ip = await getLocalIpAddress();
-
-    const infoPayload = {
-      service: "air-dropx",
-      deviceId: `device-${(ip || "0.0.0.0").replace(/\./g, "-")}`,
-      deviceName: deviceName,
-      platform: "android",
-      deviceType: "phone",
-      port: port,
+    const deviceInfoDir = `${sharedDirectory}airdropx`;
+    const deviceInfoPath = `${sharedDirectory}airdropx/info`;
+    const ip = (await getLocalIpAddress()) || "127.0.0.1";
+    const info = {
+      name: Device.deviceName || "Air-DropX Device",
+      ip,
+      port,
       protocolVersion: "1.0",
       capabilities: {
         sendFiles: true,
@@ -153,29 +134,55 @@ export async function ensureDeviceInfoFile(port: number = 8080) {
       },
     };
 
-    const infoPath = `${airdropxDir}info`;
-    await FileSystem.writeAsStringAsync(infoPath, JSON.stringify(infoPayload), {
-      encoding: FileSystem.EncodingType.UTF8,
-    });
-    console.log("Device discovery endpoint created at:", infoPath);
+    const existing = await FileSystem.getInfoAsync(deviceInfoDir);
+    if (existing.exists && !existing.isDirectory) {
+      await FileSystem.deleteAsync(deviceInfoDir, { idempotent: true });
+    }
+
+    const dirCheck = await FileSystem.getInfoAsync(deviceInfoDir);
+    if (!dirCheck.exists) {
+      await FileSystem.makeDirectoryAsync(deviceInfoDir, { intermediates: true });
+    }
+
+    await FileSystem.writeAsStringAsync(deviceInfoPath, JSON.stringify(info));
   } catch (error) {
-    console.log("Failed to write device discovery info:", error);
+    console.log("Failed to write deviceInfo file:", error);
   }
 }
 
 /**
- * Clean up legacy sample-file.txt if present
+ * Remove legacy sample file if present
  */
 async function removeLegacySampleFile() {
   try {
-    const legacyPath = `${sharedDirectory}sample-file.txt`;
-    const info = await FileSystem.getInfoAsync(legacyPath);
+    const samplePath = `${sharedDirectory}sample-file.txt`;
+    const info = await FileSystem.getInfoAsync(samplePath);
     if (info.exists) {
-      await FileSystem.deleteAsync(legacyPath, { idempotent: true });
-      console.log("Deleted legacy sample-file.txt");
+      await FileSystem.deleteAsync(samplePath, { idempotent: true });
     }
-  } catch (e) {
-    console.log("Error removing legacy sample file:", e);
+  } catch (_e) {
+    // Ignore error
+  }
+}
+
+/**
+ * Finds a unique filename in sharedDirectory if collision occurs
+ */
+async function getUniqueDestinationFileName(fileName: string): Promise<string> {
+  const dot = fileName.lastIndexOf(".");
+  const stem = dot > 0 ? fileName.substring(0, dot) : fileName;
+  const ext = dot > 0 ? fileName.substring(dot) : "";
+
+  let targetName = fileName;
+  let counter = 1;
+
+  while (true) {
+    const info = await FileSystem.getInfoAsync(`${sharedDirectory}${targetName}`);
+    if (!info.exists) {
+      return targetName;
+    }
+    targetName = `${stem} (${counter})${ext}`;
+    counter++;
   }
 }
 
@@ -194,7 +201,8 @@ export async function clearSharedFiles() {
           (fileName) =>
             fileName !== "index.html" &&
             fileName !== "files.json" &&
-            fileName !== "airdropx"
+            fileName !== "airdropx" &&
+            !fileName.startsWith("airdropx")
         )
         .map((fileName) =>
           FileSystem.deleteAsync(`${sharedDirectory}${fileName}`, {
@@ -208,6 +216,23 @@ export async function clearSharedFiles() {
     console.log("Shared directory cleared.");
   } catch (error) {
     console.log("Failed to clear shared files:", error);
+    throw error;
+  }
+}
+
+/**
+ * Remove a single shared file by name
+ */
+export async function removeSharedFile(fileName: string) {
+  try {
+    await ensureSharedDirectory();
+    await FileSystem.deleteAsync(`${sharedDirectory}${fileName}`, {
+      idempotent: true,
+    });
+    await updateFilesJsonIndex();
+    console.log(`Shared file removed: ${fileName}`);
+  } catch (error) {
+    console.log(`Failed to remove shared file ${fileName}:`, error);
     throw error;
   }
 }
@@ -227,10 +252,12 @@ export async function startLocalServer() {
       try {
         const running = await server.isRunning();
         if (running) {
-          const existingUrl = await server.getURL();
+          const existingUrl = server.getURL();
           if (existingUrl) {
-            console.log("Reusing running local server:", existingUrl);
-            return existingUrl;
+            const currentIp = await getLocalIpAddress();
+            return currentIp && currentIp !== "0.0.0.0"
+              ? `http://${currentIp}:${server.port}`
+              : existingUrl;
           }
         }
       } catch (e) {
@@ -253,19 +280,13 @@ export async function startLocalServer() {
       try {
         console.log(`Attempting to start StaticServer on port ${port}...`);
         await ensureDeviceInfoFile(port);
-        const newServer = new StaticServer(port, sharedDirectory);
+        const newServer = new StaticServer(port, sharedDirectory, { localOnly: false });
         const startedUrl = await newServer.start();
         server = newServer;
-
-        const finalUrl =
-          ipAddress && ipAddress !== "0.0.0.0"
-            ? `http://${ipAddress}:${port}`
-            : startedUrl;
-
-        console.log(
-          `Local server started successfully on port ${port}:`,
-          finalUrl
-        );
+        const finalUrl = ipAddress && ipAddress !== "0.0.0.0"
+          ? `http://${ipAddress}:${port}`
+          : startedUrl || `http://localhost:${port}`;
+        console.log(`Local server started on port ${port}: ${finalUrl}`);
         return finalUrl;
       } catch (err: any) {
         console.log(
@@ -283,14 +304,19 @@ export async function startLocalServer() {
 }
 
 /**
- * Copy a selected file into the
- * current transfer directory
+ * Copy a single selected file into the transfer directory (with auto collision handling)
  */
 export async function copyFileToServer(sourceUri: string, fileName: string) {
   try {
     await ensureSharedDirectory();
+    let cleanName = fileName.replace(/[\/\\]/g, "_").trim();
+    if (!cleanName || cleanName === "." || cleanName === ".." ||
+        ["index.html", "files.json", "airdropx"].includes(cleanName.toLowerCase())) {
+      cleanName = `shared_file_${Date.now()}`;
+    }
 
-    const destinationUri = `${sharedDirectory}${fileName}`;
+    const uniqueName = await getUniqueDestinationFileName(cleanName);
+    const destinationUri = `${sharedDirectory}${uniqueName}`;
 
     await FileSystem.copyAsync({
       from: sourceUri,
@@ -298,12 +324,37 @@ export async function copyFileToServer(sourceUri: string, fileName: string) {
     });
 
     await updateFilesJsonIndex();
-
     console.log("File copied to server:", destinationUri);
-
     return destinationUri;
   } catch (error) {
     console.log("Failed to copy file:", error);
+    throw error;
+  }
+}
+
+/**
+ * Copy multiple files into the transfer directory in batch
+ */
+export async function copyMultipleFilesToServer(files: { uri: string; name: string }[]) {
+  try {
+    await ensureSharedDirectory();
+    for (const file of files) {
+      let cleanName = file.name.replace(/[\/\\]/g, "_").trim();
+      if (!cleanName || cleanName === "." || cleanName === ".." ||
+          ["index.html", "files.json", "airdropx"].includes(cleanName.toLowerCase())) {
+        cleanName = `shared_file_${Date.now()}`;
+      }
+      const uniqueName = await getUniqueDestinationFileName(cleanName);
+      const destinationUri = `${sharedDirectory}${uniqueName}`;
+      await FileSystem.copyAsync({
+        from: file.uri,
+        to: destinationUri,
+      });
+    }
+    await updateFilesJsonIndex();
+    console.log(`Successfully copied batch of ${files.length} files to server.`);
+  } catch (error) {
+    console.log("Failed to copy multiple files batch:", error);
     throw error;
   }
 }

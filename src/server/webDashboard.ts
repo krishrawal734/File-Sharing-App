@@ -4,6 +4,7 @@ export function getWebDashboardHTML(): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="referrer" content="no-referrer">
   <title>AirDropX — PC Web Transfer</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -122,6 +123,12 @@ export function getWebDashboardHTML(): string {
     let allFiles = [];
     let currentCategory = 'all';
 
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[char]);
+    }
+
     function formatBytes(bytes) {
       if (!bytes || bytes === 0) return '0 B';
       const k = 1024;
@@ -151,24 +158,23 @@ export function getWebDashboardHTML(): string {
 
     async function loadFiles() {
       try {
-        const res = await fetch('/files.json?t=' + Date.now());
+        const res = await fetch('files.json?t=' + Date.now());
         if (res.ok) {
           const data = await res.json();
-          if (Array.isArray(data)) {
-            const clearedAt = parseInt(localStorage.getItem('airdropx_cleared_at') || '0', 10);
+          const rawList = Array.isArray(data) ? data : (data && Array.isArray(data.files) ? data.files : []);
+          const clearedAt = parseInt(localStorage.getItem('airdropx_cleared_at') || '0', 10);
 
-            allFiles = data.filter(f => {
-              if (f.name === 'index.html' || f.name === 'files.json' || f.name === 'sample-file.txt' || (f.path || '').startsWith('airdropx')) {
-                return false;
-              }
-              if (clearedAt > 0 && f.addedAt && f.addedAt <= clearedAt) {
-                return false;
-              }
-              return true;
-            });
-            updateStats();
-            renderFiles();
-          }
+          allFiles = rawList.filter(f => {
+            if (f.name === 'index.html' || f.name === 'files.json' || f.name === 'sample-file.txt' || (f.path || '').startsWith('airdropx')) {
+              return false;
+            }
+            if (clearedAt > 0 && f.addedAt && f.addedAt <= clearedAt) {
+              return false;
+            }
+            return true;
+          });
+          updateStats();
+          renderFiles();
         }
       } catch (err) {
         console.warn('Could not fetch files.json:', err);
@@ -243,7 +249,7 @@ export function getWebDashboardHTML(): string {
 
       filtered.forEach(file => {
         const iconInfo = getFileIcon(file.ext, file.mime);
-        const downloadUrl = file.url || \`/\${encodeURIComponent(file.path)}\`;
+        const downloadUrl = encodeURIComponent(file.name);
         const ext = (file.ext || '').toLowerCase();
         const mime = (file.mime || '').toLowerCase();
         const isImage = mime.startsWith('image/') || ['jpg', 'png', 'jpeg', 'gif', 'webp'].includes(ext);
@@ -255,7 +261,7 @@ export function getWebDashboardHTML(): string {
           <div>
             \${isImage ? \`
               <div class="w-full h-36 rounded-xl overflow-hidden mb-3 bg-[#0c1318] border border-[#1f2d36] flex items-center justify-center">
-                <img src="/\${encodeURIComponent(file.path)}" alt="\${file.name}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                <img src="\${downloadUrl}" alt="\${escapeHtml(file.name)}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
                 <div class="hidden w-full h-full flex items-center justify-center \${iconInfo.bg} \${iconInfo.color}">
                   <i class="fa-solid \${iconInfo.icon} text-3xl"></i>
                 </div>
@@ -265,11 +271,11 @@ export function getWebDashboardHTML(): string {
                 <i class="fa-solid \${iconInfo.icon} \${iconInfo.color} text-3xl sm:text-4xl"></i>
               </div>
             \`}
-            <h3 class="font-bold text-xs text-slate-100 truncate" title="\${file.name}">\${file.name}</h3>
+            <h3 class="font-bold text-xs text-slate-100 truncate" title="\${escapeHtml(file.name)}">\${escapeHtml(file.name)}</h3>
             <p class="text-[11px] text-slate-400 mt-1 font-medium">\${formatBytes(file.size)}</p>
           </div>
           <div class="mt-4 pt-3 border-t border-[#1f2d36]/60 flex items-center justify-between">
-            <a href="\${downloadUrl}" download="\${file.name}" class="w-full py-2.5 rounded-xl bg-[#0d8274] hover:bg-[#10b981] text-xs text-white font-bold text-center transition flex items-center justify-center gap-2">
+            <a href="\${downloadUrl}" download="\${escapeHtml(file.name)}" class="w-full py-2.5 rounded-xl bg-[#0d8274] hover:bg-[#10b981] text-xs text-white font-bold text-center transition flex items-center justify-center gap-2">
               <i class="fa-solid fa-download"></i> Download File
             </a>
           </div>
@@ -295,8 +301,9 @@ export function getWebDashboardHTML(): string {
 
         for (const file of allFiles) {
           btn.innerHTML = \`<i class="fa-solid fa-spinner fa-spin"></i> Zipping (\${completed + 1}/\${allFiles.length})...\`;
-          const fileUrl = file.url || \`/\${encodeURIComponent(file.path)}\`;
+          const fileUrl = encodeURIComponent(file.name);
           const response = await fetch(fileUrl);
+          if (!response.ok) throw new Error('Download failed: ' + response.status);
           const blob = await response.blob();
           zip.file(file.name, blob);
           completed++;
@@ -331,7 +338,7 @@ export function getWebDashboardHTML(): string {
       allFiles.forEach((file, index) => {
         setTimeout(() => {
           const a = document.createElement('a');
-          a.href = file.url || \`/\${encodeURIComponent(file.path)}\`;
+          a.href = encodeURIComponent(file.name);
           a.download = file.name;
           document.body.appendChild(a);
           a.click();

@@ -11,40 +11,47 @@ export type TransferHistory = {
   date: string;
 };
 
-let database: SQLite.SQLiteDatabase | null = null;
+let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
-// OPEN DATABASE
+// OPEN & INITIALIZE DATABASE (MEMOIZED PROMISE TO PREVENT RACE CONDITIONS)
 
-export async function getDatabase() {
-  if (database) {
-    return database;
+export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
+  if (!dbPromise) {
+    dbPromise = (async () => {
+      try {
+        const db = await SQLite.openDatabaseAsync("file-sharing.db");
+
+        await db.execAsync(`
+          CREATE TABLE IF NOT EXISTS transfer_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            fileName TEXT NOT NULL,
+            fileSize INTEGER NOT NULL,
+            status TEXT NOT NULL,
+            direction TEXT NOT NULL,
+            date TEXT NOT NULL
+          );
+
+          CREATE INDEX IF NOT EXISTS idx_transfer_date ON transfer_history (date DESC);
+          CREATE INDEX IF NOT EXISTS idx_transfer_status ON transfer_history (status);
+        `);
+
+        console.log("Transfer history database initialized with indexes.");
+        return db;
+      } catch (error) {
+        dbPromise = null;
+        console.error("Database initialization error:", error);
+        throw error;
+      }
+    })();
   }
 
-  database = await SQLite.openDatabaseAsync("file-sharing.db");
-
-  return database;
+  return dbPromise;
 }
 
 // CREATE TABLE & INDEXES
 
 export async function initializeDatabase() {
-  const db = await getDatabase();
-
-  await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS transfer_history (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      fileName TEXT NOT NULL,
-      fileSize INTEGER NOT NULL,
-      status TEXT NOT NULL,
-      direction TEXT NOT NULL,
-      date TEXT NOT NULL
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_transfer_date ON transfer_history (date DESC);
-    CREATE INDEX IF NOT EXISTS idx_transfer_status ON transfer_history (status);
-  `);
-
-  console.log("Transfer history database initialized with indexes.");
+  await getDatabase();
 }
 
 // ADD HISTORY

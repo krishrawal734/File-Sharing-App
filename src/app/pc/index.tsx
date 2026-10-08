@@ -7,6 +7,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AppHeader from "../../components/AppHeader";
 import ConnectionQRCode from "../../components/ConnectionQRCode";
 import { startLocalServer, stopLocalServer, clearSharedFiles } from "../../server/localServer";
+import { isEmulatorIp } from "../../utils/networkUtils";
 
 export default function PCConnectScreen() {
   const [serverUrl, setServerUrl] = useState("");
@@ -47,6 +48,8 @@ export default function PCConnectScreen() {
       setIsClearing(false);
     }
   };
+
+  const isEmulator = serverUrl.includes("10.0.2.") || serverUrl.includes("127.0.0.1");
 
   return (
     <SafeAreaView className="flex-1 bg-[#090d10]" edges={["top", "left", "right"]}>
@@ -92,9 +95,25 @@ export default function PCConnectScreen() {
 
             {serverUrl !== "" && (
               <View className="mt-5 bg-[#0c1318] border border-[#1f2d36] px-4 py-3 rounded-2xl items-center w-full">
-                <Text className="text-slate-400 text-xs">Or open this address in PC Browser:</Text>
-                <Text className="text-[#10b981] text-base sm:text-lg font-extrabold mt-0.5 tracking-wide text-center">
+                <Text className="text-slate-400 text-xs">Scan the QR code or copy this private link:</Text>
+                <Text selectable className="text-[#10b981] text-sm font-extrabold mt-0.5 text-center">
                   {serverUrl}
+                </Text>
+              </View>
+            )}
+
+            {/* Android Emulator Tip Box */}
+            {isEmulator && (
+              <View className="mt-4 bg-amber-500/10 border border-amber-500/30 p-3.5 rounded-2xl w-full">
+                <View className="flex-row items-center gap-2 mb-1">
+                  <MaterialCommunityIcons name="cellphone-cog" size={18} color="#f59e0b" />
+                  <Text className="text-amber-400 text-xs font-bold">Android Emulator Detected</Text>
+                </View>
+                <Text className="text-slate-300 text-[11px] leading-4">
+                  <Text className="font-semibold text-amber-200">10.0.2.x</Text> is an emulator internal IP and cannot be reached directly by Windows PC browsers.
+                </Text>
+                <Text className="text-slate-300 text-[11px] leading-4 mt-1">
+                  To open in host PC browser: run <Text selectable className="font-mono text-emerald-400">adb forward tcp:8080 tcp:8080</Text> in terminal, then visit <Text selectable className="font-bold text-sky-400">http://localhost:8080</Text>.
                 </Text>
               </View>
             )}
@@ -109,7 +128,7 @@ export default function PCConnectScreen() {
                 <Text className="text-white text-sm font-bold">1</Text>
               </View>
               <Text className="text-slate-200 text-sm font-medium flex-1">
-                Ensure phone and PC/Mac are connected to the same local Wi-Fi network.
+                Ensure phone and PC/Mac are connected to the same local Wi-Fi network (or physical Wi-Fi for mobile devices).
               </Text>
             </View>
 
@@ -118,7 +137,7 @@ export default function PCConnectScreen() {
                 <Text className="text-white text-sm font-bold">2</Text>
               </View>
               <Text className="text-slate-200 text-sm font-medium flex-1">
-                Open Chrome, Safari, or Edge on your computer and navigate to the address shown above.
+                Scan the QR code or copy the full private link into your PC browser. Keep the link private.
               </Text>
             </View>
 

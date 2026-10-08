@@ -29,12 +29,16 @@ import {
 } from "../../utils/fileUtils";
 
 import {
+  saveFile,
+  saveFileToGallery,
   saveFileToDownloads,
 } from "../../utils/downloadUtils";
 
 import {
   addTransferHistory,
 } from "../../database/database";
+
+import { DeviceDiscoveryService } from "../../services/discovery/DeviceDiscoveryService";
 
 
 type ServerFile = {
@@ -47,12 +51,19 @@ export default function ReceiveTransferScreen() {
   const params =
     useLocalSearchParams<{
       serverUrl?: string;
+      senderName?: string;
+      sessionId?: string;
     }>();
 
   const serverUrl =
     typeof params.serverUrl === "string"
       ? params.serverUrl
       : "";
+
+  const senderName =
+    typeof params.senderName === "string"
+      ? params.senderName
+      : "Sender Device";
 
   const [files, setFiles] =
     useState<ServerFile[]>([]);
@@ -118,6 +129,9 @@ export default function ReceiveTransferScreen() {
 
   const autoStartedRef =
     useRef(false);
+
+  const serverFilesRef =
+    useRef<ServerFile[]>([]);
 
 
   /*
@@ -255,116 +269,10 @@ export default function ReceiveTransferScreen() {
       fileUri: string,
       fileName: string
     ) => {
-      try {
-        console.log(
-          "Creating gallery asset:",
-          fileName
-        );
-
-        let asset: MediaLibrary.Asset;
-
-        try {
-          asset =
-            await MediaLibrary.createAssetAsync(
-              fileUri
-            );
-        } catch {
-          console.log(
-            "Direct save requires permission, checking permissions..."
-          );
-
-          let permission =
-            await MediaLibrary.getPermissionsAsync(
-              true
-            );
-
-          if (!permission.granted) {
-            permission =
-              await MediaLibrary.getPermissionsAsync(
-                false
-              );
-          }
-
-          if (!permission.granted) {
-            permission =
-              await MediaLibrary.requestPermissionsAsync(
-                true
-              );
-          }
-
-          if (!permission.granted) {
-            permission =
-              await MediaLibrary.requestPermissionsAsync(
-                false
-              );
-          }
-
-          if (!permission.granted) {
-            throw new Error(
-              "Gallery permission was not granted."
-            );
-          }
-
-          asset =
-            await MediaLibrary.createAssetAsync(
-              fileUri
-            );
-        }
-
-        console.log(
-          "Gallery asset created:",
-          asset.uri
-        );
-
-        /*
-         * Try to put the media inside
-         * a File Sharing folder.
-         */
-
-        try {
-          let album =
-            await MediaLibrary.getAlbumAsync(
-              "File Sharing"
-            );
-
-          if (!album) {
-            album =
-              await MediaLibrary.createAlbumAsync(
-                "File Sharing",
-                asset,
-                false
-              );
-
-            console.log(
-              "File Sharing album created."
-            );
-          } else {
-            await MediaLibrary.addAssetsToAlbumAsync(
-              [asset],
-              album,
-              false
-            );
-
-            console.log(
-              "Asset added to File Sharing album."
-            );
-          }
-        } catch (albumError) {
-          console.log(
-            "Could not group into File Sharing album, saved to main gallery:",
-            albumError
-          );
-        }
-
-        return asset.uri;
-      } catch (error) {
-        console.log(
-          "Gallery save error:",
-          error
-        );
-
-        throw error;
-      }
+      return await saveFileToGallery(
+        fileUri,
+        fileName
+      );
     };
 
 
@@ -434,32 +342,15 @@ export default function ReceiveTransferScreen() {
         fileName.split("/").pop() ||
         fileName;
 
-      /*
-       * Try to find displayed file name.
-       */
-
-      if (content) {
-        const cleanContent =
-          content
-            .replace(
-              /\s*\([\d.]+\s*(?:Bytes|B|KB|MB|GB|TB)\)/gi,
-              ""
-            )
-            .replace(
-              /\s*\([^)]*MB\)/gi,
-              ""
-            )
-            .trim();
-
-        if (
-          cleanContent &&
-          !cleanContent.startsWith(
-            "Index"
-          )
-        ) {
-          fileName =
-            cleanContent;
-        }
+      if (
+        !fileName ||
+        fileName === "index.html" ||
+        fileName === "files.json" ||
+        fileName.startsWith("airdropx") ||
+        fileName === "sample-file.txt" ||
+        fileName.toLowerCase().startsWith("download")
+      ) {
+        continue;
       }
 
       /*
@@ -523,116 +414,131 @@ export default function ReceiveTransferScreen() {
    * --------------------------------
    */
 
-  const loadServerFiles =
-    async () => {
-      try {
-        setMessage(
-          "Connecting to sender..."
-        );
+  const loadServerFiles = async () => {
+    if (!serverUrl) {
+      setMessage("Server URL is missing.");
+      return;
+    }
 
-        console.log(
-          "Receiver connecting to:",
-          serverUrl
-        );
+    console.log("Receiver connecting to:", serverUrl);
 
-        if (!serverUrl) {
-          throw new Error(
-            "Server URL is missing."
-          );
-        }
+    // Build candidate URLs for fallback (e.g. Android emulator IPs and discovered network devices)
+    const urlsToTry: string[] = [serverUrl];
 
-        const response =
-          await fetch(
-            serverUrl
-          );
+    const portMatch = serverUrl.match(/:(\d+)/);
+    const port = portMatch ? portMatch[1] : "8080";
 
-        console.log(
-          "Server status:",
-          response.status
-        );
-
-        if (!response.ok) {
-          throw new Error(
-            `Server returned ${response.status}`
-          );
-        }
-
-        const html =
-          await response.text();
-
-        console.log(
-          "Server HTML:",
-          html
-        );
-
-        const serverFiles =
-          parseServerFiles(
-            html
-          );
-
-        console.log(
-          "Server files:",
-          serverFiles
-        );
-
-        if (
-          serverFiles.length === 0
-        ) {
-          throw new Error(
-            "No files found on sender."
-          );
-        }
-
-        setFiles(
-          serverFiles
-        );
-
-        setTotalBytes(
-          serverFiles.reduce(
-            (
-              total,
-              file
-            ) =>
-              total +
-              file.size,
-            0
-          )
-        );
-
-        if (!autoStartedRef.current) {
-          autoStartedRef.current = true;
-
-          setMessage(
-            `Auto-downloading ${serverFiles.length} file${
-              serverFiles.length !== 1 ? "s" : ""
-            }...`
-          );
-
-          downloadFile(
-            serverFiles[0],
-            0
-          );
-        } else {
-          setMessage(
-            `${serverFiles.length} file${
-              serverFiles.length !== 1
-                ? "s"
-                : ""
-            } ready.`
-          );
-        }
-      } catch (error: any) {
-        console.log(
-          "Server connection error:",
-          error
-        );
-
-        setMessage(
-          error?.message ||
-            "Could not connect to sender."
-        );
+    if (serverUrl.includes("10.0.2.") || serverUrl.includes("127.0.0.1")) {
+      const emulatorIps = [
+        `http://10.0.2.15:${port}`,
+        `http://10.0.2.16:${port}`,
+        `http://10.0.2.2:${port}`,
+        `http://127.0.0.1:${port}`,
+      ];
+      for (const ip of emulatorIps) {
+        if (!urlsToTry.includes(ip)) urlsToTry.push(ip);
       }
-    };
+    }
+
+    try {
+      const discovered = DeviceDiscoveryService.getInstance().getDiscoveredDevices();
+      for (const dev of discovered) {
+        if (dev.address && dev.port) {
+          const devUrl = `http://${dev.address}:${dev.port}`;
+          if (!urlsToTry.includes(devUrl)) urlsToTry.push(devUrl);
+        }
+      }
+    } catch {
+      // Ignore discovery error if uninitialized
+    }
+
+    const MAX_RETRIES = 5;
+    let lastError: any = null;
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      for (const targetUrl of urlsToTry) {
+        try {
+          setMessage(`Connecting to sender (Attempt ${attempt}/${MAX_RETRIES})...`);
+
+          let serverFiles: ServerFile[] = [];
+          const filesJsonUrl = `${targetUrl.replace(/\/$/, "")}/files.json`;
+
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+          // Try structured files.json endpoint first
+          try {
+            const jsonRes = await fetch(filesJsonUrl, { signal: controller.signal });
+            if (jsonRes.ok) {
+              const data = await jsonRes.json();
+              const jsonList = Array.isArray(data)
+                ? data
+                : data && Array.isArray(data.files)
+                ? data.files
+                : [];
+              if (jsonList.length > 0) {
+                serverFiles = jsonList.map((item: any) => ({
+                  name: item.name,
+                  size: item.size || 0,
+                }));
+              }
+            }
+          } catch {
+            // Fall back to root HTML parsing
+          }
+
+          if (serverFiles.length === 0) {
+            const response = await fetch(targetUrl, { signal: controller.signal });
+            if (!response.ok) {
+              throw new Error(`Server returned status ${response.status}`);
+            }
+            const html = await response.text();
+            serverFiles = parseServerFiles(html);
+          }
+
+          clearTimeout(timeoutId);
+          console.log(`Server status (${targetUrl}): connected, found ${serverFiles.length} files`);
+
+          if (serverFiles.length === 0) {
+            throw new Error("No files found on sender yet.");
+          }
+
+          serverFilesRef.current = serverFiles;
+          setFiles(serverFiles);
+          setTotalBytes(serverFiles.reduce((total, file) => total + file.size, 0));
+
+          if (!autoStartedRef.current) {
+            autoStartedRef.current = true;
+            setMessage(
+              `Auto-downloading ${serverFiles.length} file${
+                serverFiles.length !== 1 ? "s" : ""
+              }...`
+            );
+            downloadFile(serverFiles[0], 0);
+          } else {
+            setMessage(
+              `${serverFiles.length} file${
+                serverFiles.length !== 1 ? "s" : ""
+              } ready.`
+            );
+          }
+          return;
+        } catch (error: any) {
+          console.log(`Server connection attempt (${targetUrl}) failed:`, error?.message || error);
+          lastError = error;
+        }
+      }
+
+      if (attempt < MAX_RETRIES) {
+        await new Promise((res) => setTimeout(res, 1200));
+      }
+    }
+
+    console.log("Server connection error after retries:", lastError);
+    setMessage(
+      lastError?.message || "Could not connect to sender. Make sure both devices are on the same Wi-Fi network."
+    );
+  };
 
 
   /*
@@ -937,16 +843,17 @@ export default function ReceiveTransferScreen() {
          * the next file.
          */
 
+        const currentFiles = serverFilesRef.current.length > 0 ? serverFilesRef.current : files;
         if (
           index <
-          files.length - 1
+          currentFiles.length - 1
         ) {
           const nextIndex =
             index + 1;
 
           setTimeout(() => {
             downloadFile(
-              files[nextIndex],
+              currentFiles[nextIndex],
               nextIndex
             );
           }, 700);
@@ -1326,14 +1233,59 @@ export default function ReceiveTransferScreen() {
 
         {/* HEADER */}
 
-        <View className="mb-5">
-          <Text className="text-2xl font-bold text-slate-900">
-            Receive Files
-          </Text>
+        <View className="mb-5 flex-row items-center justify-between">
+          <View>
+            <Text className="text-2xl font-bold text-slate-900">
+              Receive Files
+            </Text>
+            <Text className="mt-1 text-slate-500">
+              Connected to <Text className="font-semibold text-slate-800">{senderName}</Text>
+            </Text>
+          </View>
 
-          <Text className="mt-1 text-slate-500">
-            Download files from the sender
-          </Text>
+          {/* Connection Status Badge: Connecting -> Connected -> Transferring -> Completed */}
+          <View
+            className={`px-3 py-1.5 rounded-full border flex-row items-center ${
+              completed
+                ? "bg-emerald-500/15 border-emerald-500/30"
+                : downloading
+                ? "bg-blue-500/15 border-blue-500/30"
+                : files.length > 0
+                ? "bg-teal-500/15 border-teal-500/30"
+                : "bg-amber-500/15 border-amber-500/30"
+            }`}
+          >
+            <View
+              className={`w-2 h-2 rounded-full mr-1.5 ${
+                completed
+                  ? "bg-emerald-500"
+                  : downloading
+                  ? "bg-blue-500"
+                  : files.length > 0
+                  ? "bg-teal-500"
+                  : "bg-amber-500"
+              }`}
+            />
+            <Text
+              className={`text-xs font-bold ${
+                completed
+                  ? "text-emerald-600"
+                  : downloading
+                  ? "text-blue-600"
+                  : files.length > 0
+                  ? "text-teal-600"
+                  : "text-amber-600"
+              }`}
+            >
+              {completed
+                ? "Completed"
+                : downloading
+                ? "Transferring"
+                : files.length > 0
+                ? "Connected"
+                : "Connecting"}
+            </Text>
+          </View>
         </View>
 
 

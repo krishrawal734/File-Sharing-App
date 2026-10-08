@@ -405,18 +405,6 @@ export default function HomeScreen() {
                   activeOpacity={0.7}
                   onPress={() => {
                     setIsSidebarOpen(false);
-                    router.push("/security" as any);
-                  }}
-                  className="flex-row items-center gap-3.5 px-4 py-3 rounded-xl active:bg-[#141e24]"
-                >
-                  <MaterialCommunityIcons name="shield-check-outline" size={22} color="#10b981" />
-                  <Text className="text-white text-sm font-semibold">Security & App Lock</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    setIsSidebarOpen(false);
                     router.push("/settings");
                   }}
                   className="flex-row items-center gap-3.5 px-4 py-3 rounded-xl active:bg-[#141e24]"

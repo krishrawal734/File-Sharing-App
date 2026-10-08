@@ -23,7 +23,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import BottomNavigation from "../../components/BottomNavigation";
 import SearchBar from "../../components/ui/SearchBar";
 import { SelectedFile } from "../../types/file";
-import { clearSharedFiles, copyFileToServer } from "../../server/localServer";
+import { clearSharedFiles, copyFileToServer, copyMultipleFilesToServer } from "../../server/localServer";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const NUM_COLUMNS = SCREEN_WIDTH > 600 ? 5 : 4;
@@ -371,7 +371,9 @@ export default function PhotosScreen() {
       const selectedAssets = photos.filter((p) => selectedAssetIds.has(p.id || p.uri));
       const preparedFiles: SelectedFile[] = [];
 
-      for (const asset of selectedAssets) {
+      const seenNames = new Map<string, number>();
+      for (let i = 0; i < selectedAssets.length; i++) {
+        const asset = selectedAssets[i];
         let size = 0;
         let finalUri = asset.uri;
 
@@ -391,10 +393,27 @@ export default function PhotosScreen() {
 
         const extParts = (asset.filename || finalUri).split(".");
         const ext = (extParts.length > 1 ? extParts.pop() : "jpg")?.toLowerCase() || "jpg";
+        let rawName = asset.filename || `photo_${i + 1}.${ext}`;
+        rawName = rawName.replace(/[\/\\]/g, "_").trim();
+
+        const count = seenNames.get(rawName) || 0;
+        seenNames.set(rawName, count + 1);
+
+        let finalName = rawName;
+        if (count > 0) {
+          const dotIndex = rawName.lastIndexOf(".");
+          if (dotIndex > 0) {
+            const stem = rawName.substring(0, dotIndex);
+            const e = rawName.substring(dotIndex);
+            finalName = `${stem} (${count})${e}`;
+          } else {
+            finalName = `${rawName} (${count})`;
+          }
+        }
 
         preparedFiles.push({
-          id: `${asset.id || asset.uri}-${Date.now()}`,
-          name: asset.filename || `photo_${Date.now()}.${ext}`,
+          id: `${asset.id || asset.uri}-${Date.now()}-${i}`,
+          name: finalName,
           size: size || 1024,
           uri: finalUri,
           type: "image",
@@ -403,12 +422,9 @@ export default function PhotosScreen() {
       }
 
       await clearSharedFiles();
-      const BATCH_SIZE = 4;
-      for (let i = 0; i < preparedFiles.length; i += BATCH_SIZE) {
-        const chunk = preparedFiles.slice(i, i + BATCH_SIZE);
-        await Promise.all(chunk.map((file) => copyFileToServer(file.uri, file.name)));
-        await new Promise((res) => setTimeout(res, 10));
-      }
+      await copyMultipleFilesToServer(
+        preparedFiles.map((file) => ({ uri: file.uri, name: file.name }))
+      );
 
       router.push("/send/devices");
     } catch (error: any) {

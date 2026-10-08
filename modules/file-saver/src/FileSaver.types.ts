@@ -1,19 +1,23 @@
-// Define your exported module types here.
-import {
-  requireNativeModule,
-} from "expo-modules-core";
+export type FileSaverModuleType = {
+  saveToGallery(
+    sourceUri: string,
+    fileName: string,
+    mimeType: string
+  ): Promise<string>;
 
-type FileSaverModuleType = {
   saveToDownloads(
     sourceUri: string,
     fileName: string,
     mimeType: string
   ): Promise<string>;
+
+  saveToAppDocuments?(
+    sourceUri: string,
+    fileName: string
+  ): Promise<string>;
 };
 
-const FileSaver =
-  requireNativeModule<FileSaverModuleType>(
-    "FileSaver"
-  );
-
-export default FileSaver;
+export type SaveFileResult = {
+  uri: string;
+  savedTo: "gallery" | "storage";
+};

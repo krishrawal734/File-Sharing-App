@@ -46,14 +46,14 @@ export default function ConnectionRequestModal({
 
               <View className="flex-row items-center gap-1.5 bg-[#10b981]/15 border border-[#10b981]/30 px-3 py-1 rounded-full mb-2">
                 <MaterialCommunityIcons name="check-circle" size={14} color="#10b981" />
-                <Text className="text-[#10b981] text-xs font-bold">✓ Connected</Text>
+                <Text className="text-[#10b981] text-xs font-bold">Device reachable</Text>
               </View>
 
               <Text className="text-white text-lg font-bold text-center mb-1">
                 {targetDevice.name}
               </Text>
               <Text className="text-slate-400 text-xs text-center mb-6">
-                Secure local connection active
+                Device is reachable on local Wi-Fi; transfers use HTTP.
               </Text>
 
               {/* ACTION BUTTONS */}

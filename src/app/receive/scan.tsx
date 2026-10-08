@@ -1,15 +1,57 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { QRCodeConnectionService } from "../../services/qr/QRCodeConnectionService";
 
 export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [enableTorch, setEnableTorch] = useState(false);
+
+  const handleBarcodeScanned = ({ data }: { data: string }) => {
+    if (scanned) return;
+    setScanned(true);
+
+    console.log("[AirDropX:Scan] Scanned QR raw data:", data);
+    const result = QRCodeConnectionService.parseQRSession(data);
+
+    if (!result.success) {
+      let title = "Invalid QR Code";
+      let message = "This QR code is not recognized by Air-DropX.";
+
+      if (result.error === "EXPIRED") {
+        title = "QR Code Expired";
+        message = "This QR code has expired. Please ask the sender to tap 'Regenerate QR'.";
+      } else if (result.error === "CANCELLED") {
+        title = "Session Cancelled";
+        message = "This sharing session was stopped or cancelled by the sender.";
+      }
+
+      Alert.alert(title, message, [
+        {
+          text: "Scan Again",
+          onPress: () => setScanned(false),
+        },
+      ]);
+      return;
+    }
+
+    const { payload } = result;
+    console.log(`[AirDropX:Scan] Connected to ${payload.deviceName} at ${payload.serverUrl}`);
+
+    router.push({
+      pathname: "/receive/transfer",
+      params: {
+        serverUrl: payload.serverUrl,
+        senderName: payload.deviceName,
+        sessionId: payload.sessionId,
+      },
+    } as any);
+  };
 
   if (!permission) {
     return (
@@ -46,25 +88,17 @@ export default function ScanScreen() {
 
       {/* Camera View */}
       <CameraView
-        style={{ flex: 1 }}
+        style={StyleSheet.absoluteFillObject}
         facing="back"
         enableTorch={enableTorch}
         barcodeScannerSettings={{
           barcodeTypes: ["qr"],
         }}
-        onBarcodeScanned={
-          scanned
-            ? undefined
-            : ({ data }) => {
-                setScanned(true);
-                console.log("QR connection URL:", data);
-                router.push({
-                  pathname: "/receive/transfer",
-                  params: { serverUrl: data },
-                } as any);
-              }
-        }
-      >
+        onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
+      />
+
+      {/* Overlay UI Container */}
+      <View className="flex-1 justify-between">
         {/* Top Header Overlay */}
         <SafeAreaView className="px-4 pt-3 flex-row items-center justify-between z-10 bg-black/40">
           <TouchableOpacity
@@ -110,7 +144,7 @@ export default function ScanScreen() {
             </Text>
           </View>
         </SafeAreaView>
-      </CameraView>
+      </View>
     </View>
   );
 }

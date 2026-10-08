@@ -45,7 +45,6 @@ export default function RootLayout() {
           <Stack.Screen name="file-manager/index" />
           <Stack.Screen name="history/index" />
           <Stack.Screen name="settings/index" />
-          <Stack.Screen name="security/index" />
         </Stack>
       </SafeAreaProvider>
     </GestureHandlerRootView>

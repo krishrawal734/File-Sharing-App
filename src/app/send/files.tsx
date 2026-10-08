@@ -1,18 +1,29 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Alert, ScrollView, Text, View, TouchableOpacity, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import * as FileSystem from "expo-file-system/legacy";
 
 import AppHeader from "../../components/AppHeader";
 import FileCard from "../../components/FileCard";
 import { SelectedFile, FileType } from "../../types/file";
-import { clearSharedFiles, copyFileToServer } from "../../server/localServer";
+import { clearSharedFiles, copyFileToServer, copyMultipleFilesToServer, removeSharedFile } from "../../server/localServer";
 
 export default function SelectFilesScreen() {
   const [files, setFiles] = useState<SelectedFile[]>([]);
   const [copying, setCopying] = useState(false);
+  const filesRef = useRef<SelectedFile[]>([]);
+  const busyRef = useRef(false);
+
+  const showFiles = (nextFiles: SelectedFile[]) => {
+    filesRef.current = nextFiles;
+    setFiles(nextFiles);
+  };
+
+  const errorMessage = (error: unknown) =>
+    error instanceof Error ? error.message : "Please try again.";
 
   const getFileType = (mimeType?: string | null): FileType => {
     if (!mimeType) return "other";
@@ -26,104 +37,162 @@ export default function SelectFilesScreen() {
   };
 
   const addFilesToServer = async (selectedFiles: SelectedFile[]) => {
-    try {
-      setCopying(true);
-      await clearSharedFiles();
+    if (!selectedFiles.length) return;
 
-      const BATCH_SIZE = 4;
-      for (let i = 0; i < selectedFiles.length; i += BATCH_SIZE) {
-        const chunk = selectedFiles.slice(i, i + BATCH_SIZE);
-        await Promise.all(chunk.map((file) => copyFileToServer(file.uri, file.name)));
-        await new Promise((res) => setTimeout(res, 10));
+    const names = selectedFiles.map((f) => f.name);
+    const uniqueNames = new Set(names);
+    if (uniqueNames.size !== names.length) {
+      const duplicateName = names.find((name, index) => names.indexOf(name) !== index);
+      throw new Error(`"${duplicateName}" is already shared.`);
+    }
+
+    const currentNames = new Set(filesRef.current.map((f) => f.name));
+    for (const file of selectedFiles) {
+      if (currentNames.has(file.name)) {
+        throw new Error(`"${file.name}" is already shared.`);
       }
+    }
 
-      setFiles((current) => [...current, ...selectedFiles]);
-    } catch (error: any) {
-      console.log("File copy error:", error);
-      Alert.alert("Copy Failed", error?.message || "Could not copy selected files.");
+    const sharedDir = `${FileSystem.documentDirectory}shared-files/`;
+    try {
+      const info = await FileSystem.getInfoAsync(sharedDir);
+      if (info.exists && info.isDirectory) {
+        const diskFiles = await FileSystem.readDirectoryAsync(sharedDir);
+        for (const file of selectedFiles) {
+          if (diskFiles.includes(file.name)) {
+            throw new Error(`"${file.name}" is already shared.`);
+          }
+        }
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("already shared")) {
+        throw error;
+      }
+    }
+
+    const failed: string[] = [];
+    for (const file of selectedFiles) {
+      try {
+        await copyFileToServer(file.uri, file.name);
+        showFiles([...filesRef.current, file]);
+      } catch (error) {
+        console.log("File copy error:", error);
+        failed.push(`${file.name}: ${errorMessage(error)}`);
+        try {
+          await removeSharedFile(file.name);
+        } catch (cleanupError) {
+          failed.push(`Could not clean up ${file.name}: ${errorMessage(cleanupError)}`);
+        }
+      }
+    }
+    if (failed.length) {
+      Alert.alert("Copy Failed", failed.join("\n"));
+    }
+  };
+
+  const pickAndShare = async (pick: () => Promise<SelectedFile[] | null>) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setCopying(true);
+    try {
+      const selectedFiles = await pick();
+      if (selectedFiles) await addFilesToServer(selectedFiles);
+    } catch (error) {
+      Alert.alert("Sharing Failed", errorMessage(error));
     } finally {
+      busyRef.current = false;
       setCopying(false);
     }
   };
 
-  const pickPhotosAndVideos = async () => {
+  const pickPhotosAndVideos = () => pickAndShare(async () => {
+    let ImagePicker: typeof import("expo-image-picker");
     try {
-      let ImagePicker: any = null;
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        ImagePicker = require("expo-image-picker");
-      } catch {
-        // Module fallback
-      }
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      ImagePicker = require("expo-image-picker");
+    } catch {
+      throw new Error("ImagePicker native module unavailable.");
+    }
 
-      if (!ImagePicker) return;
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Permission required", "Please allow access to your media library.");
+      return null;
+    }
 
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert("Permission required", "Please allow access to your media library.");
-        return;
-      }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images", "videos"],
+      allowsMultipleSelection: true,
+      quality: 1,
+    });
+    if (result.canceled) return null;
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images", "videos"],
-        allowsMultipleSelection: true,
-        quality: 1,
-      });
+    return result.assets.map((asset, index) => ({
+      id: `${asset.assetId ?? ""}-${asset.uri}-${Date.now()}-${index}`,
+      name: asset.fileName ?? asset.uri.split("/").pop() ?? "Unknown file",
+      size: asset.fileSize ?? 0,
+      uri: asset.uri,
+      type: getFileType(asset.mimeType),
+      mimeType: asset.mimeType ?? undefined,
+    }));
+  });
 
-      if (result.canceled) return;
+  const pickDocuments = () => pickAndShare(async () => {
+    let DocumentPicker: typeof import("expo-document-picker");
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      DocumentPicker = require("expo-document-picker");
+    } catch {
+      throw new Error("DocumentPicker native module unavailable.");
+    }
 
-      const selectedFiles: SelectedFile[] = result.assets.map((asset: any) => ({
-        id: `${asset.assetId ?? ""}-${asset.uri}-${Date.now()}`,
-        name: asset.fileName ?? asset.uri.split("/").pop() ?? "Unknown file",
-        size: asset.fileSize ?? 0,
-        uri: asset.uri,
-        type: getFileType(asset.mimeType),
-        mimeType: asset.mimeType,
-      }));
+    const result = await DocumentPicker.getDocumentAsync({
+      type: "*/*",
+      multiple: true,
+      copyToCacheDirectory: true,
+    });
+    if (result.canceled) return null;
 
-      await addFilesToServer(selectedFiles);
-    } catch (error: any) {
-      Alert.alert("Module Error", error?.message || "ImagePicker native module unavailable.");
+    return result.assets.map((asset, index) => ({
+      id: `${asset.uri}-${Date.now()}-${index}`,
+      name: asset.name,
+      size: asset.size ?? 0,
+      uri: asset.uri,
+      type: getFileType(asset.mimeType),
+      mimeType: asset.mimeType ?? undefined,
+    }));
+  });
+
+  const removeFile = async (id: string) => {
+    if (busyRef.current) return;
+    const file = filesRef.current.find((item) => item.id === id);
+    if (!file) return;
+    busyRef.current = true;
+    setCopying(true);
+    try {
+      await removeSharedFile(file.name);
+      showFiles(filesRef.current.filter((item) => item.id !== id));
+    } catch (error) {
+      Alert.alert("Remove Failed", errorMessage(error));
+    } finally {
+      busyRef.current = false;
+      setCopying(false);
     }
   };
 
-  const pickDocuments = async () => {
+  const clearAll = async () => {
+    if (busyRef.current || filesRef.current.length === 0) return;
+    busyRef.current = true;
+    setCopying(true);
     try {
-      let DocumentPicker: any = null;
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        DocumentPicker = require("expo-document-picker");
-      } catch {
-        // Module fallback
-      }
-
-      if (!DocumentPicker) return;
-
-      const result = await DocumentPicker.getDocumentAsync({
-        type: "*/*",
-        multiple: true,
-        copyToCacheDirectory: true,
-      });
-
-      if (result.canceled) return;
-
-      const selectedFiles: SelectedFile[] = result.assets.map((asset: any) => ({
-        id: `${asset.uri}-${Date.now()}`,
-        name: asset.name,
-        size: asset.size ?? 0,
-        uri: asset.uri,
-        type: getFileType(asset.mimeType),
-        mimeType: asset.mimeType,
-      }));
-
-      await addFilesToServer(selectedFiles);
-    } catch (error: any) {
-      Alert.alert("Module Error", error?.message || "DocumentPicker native module unavailable.");
+      await clearSharedFiles();
+      showFiles([]);
+    } catch (error) {
+      Alert.alert("Clear Failed", errorMessage(error));
+    } finally {
+      busyRef.current = false;
+      setCopying(false);
     }
-  };
-
-  const removeFile = (id: string) => {
-    setFiles((current) => current.filter((file) => file.id !== id));
   };
 
   const totalSize = files.reduce((total, file) => total + file.size, 0);
@@ -141,7 +210,8 @@ export default function SelectFilesScreen() {
         {/* Buttons Grid */}
         <View className="flex-row gap-3 mb-4">
           <TouchableOpacity
-            onPress={copying ? () => {} : pickPhotosAndVideos}
+            onPress={pickPhotosAndVideos}
+            disabled={copying}
             activeOpacity={0.8}
             className="flex-1 rounded-2xl bg-[#141e24] border border-[#1f2d36] p-4 flex-row items-center justify-center gap-2.5 shadow-md"
           >
@@ -150,7 +220,8 @@ export default function SelectFilesScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={copying ? () => {} : pickDocuments}
+            onPress={pickDocuments}
+            disabled={copying}
             activeOpacity={0.8}
             className="flex-1 rounded-2xl bg-[#141e24] border border-[#1f2d36] p-4 flex-row items-center justify-center gap-2.5 shadow-md"
           >
@@ -164,7 +235,7 @@ export default function SelectFilesScreen() {
           {copying ? (
             <View className="flex-1 items-center justify-center">
               <ActivityIndicator size="large" color="#0d8274" />
-              <Text className="text-slate-400 text-xs mt-3 font-medium">Preparing files...</Text>
+              <Text className="text-slate-400 text-xs mt-3 font-medium">Updating shared files...</Text>
             </View>
           ) : files.length === 0 ? (
             <View className="flex-1 items-center justify-center py-16">
@@ -178,7 +249,7 @@ export default function SelectFilesScreen() {
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
               <View className="flex-row items-center justify-between mb-3">
                 <Text className="text-white text-base font-bold">Selected Files ({files.length})</Text>
-                <TouchableOpacity onPress={() => setFiles([])} activeOpacity={0.7}>
+                <TouchableOpacity onPress={clearAll} disabled={copying} activeOpacity={0.7}>
                   <Text className="text-red-400 text-xs font-bold">Clear All</Text>
                 </TouchableOpacity>
               </View>
@@ -194,12 +265,14 @@ export default function SelectFilesScreen() {
         <View className="border-t border-[#1f2d36] pt-4 bg-[#090d10]">
           <TouchableOpacity
             onPress={() => {
-              if (files.length === 0) {
+              if (busyRef.current) return;
+              if (filesRef.current.length === 0) {
                 Alert.alert("No files selected", "Please select at least one file to continue.");
                 return;
               }
               router.push("/send/devices" as any);
             }}
+            disabled={copying}
             activeOpacity={0.88}
             className="w-full bg-[#0d8274] py-4 rounded-2xl items-center flex-row justify-center gap-2 shadow-xl active:bg-[#096358]"
           >
