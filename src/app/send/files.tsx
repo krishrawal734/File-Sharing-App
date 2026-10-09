@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Alert, ScrollView, Text, View, TouchableOpacity, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -7,6 +7,7 @@ import { router } from "expo-router";
 import * as FileSystem from "expo-file-system/legacy";
 
 import AppHeader from "../../components/AppHeader";
+import BottomNavigation from "../../components/BottomNavigation";
 import FileCard from "../../components/FileCard";
 import { SelectedFile, FileType } from "../../types/file";
 import { clearSharedFiles, copyFileToServer, removeSharedFile } from "../../server/localServer";
@@ -16,6 +17,7 @@ export default function SelectFilesScreen() {
   const [copying, setCopying] = useState(false);
   const filesRef = useRef<SelectedFile[]>([]);
   const busyRef = useRef(false);
+  const autoOpenedRef = useRef(false);
 
   const showFiles = (nextFiles: SelectedFile[]) => {
     filesRef.current = nextFiles;
@@ -105,38 +107,6 @@ export default function SelectFilesScreen() {
     }
   };
 
-  const pickPhotosAndVideos = () => pickAndShare(async () => {
-    let ImagePicker: typeof import("expo-image-picker");
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      ImagePicker = require("expo-image-picker");
-    } catch {
-      throw new Error("ImagePicker native module unavailable.");
-    }
-
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert("Permission required", "Please allow access to your media library.");
-      return null;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images", "videos"],
-      allowsMultipleSelection: true,
-      quality: 1,
-    });
-    if (result.canceled) return null;
-
-    return result.assets.map((asset, index) => ({
-      id: `${asset.assetId ?? ""}-${asset.uri}-${Date.now()}-${index}`,
-      name: asset.fileName ?? asset.uri.split("/").pop() ?? "Unknown file",
-      size: asset.fileSize ?? 0,
-      uri: asset.uri,
-      type: getFileType(asset.mimeType),
-      mimeType: asset.mimeType ?? undefined,
-    }));
-  });
-
   const pickDocuments = () => pickAndShare(async () => {
     let DocumentPicker: typeof import("expo-document-picker");
     try {
@@ -162,6 +132,13 @@ export default function SelectFilesScreen() {
       mimeType: asset.mimeType ?? undefined,
     }));
   });
+
+  useEffect(() => {
+    if (!autoOpenedRef.current && filesRef.current.length === 0) {
+      autoOpenedRef.current = true;
+      pickDocuments();
+    }
+  }, []);
 
   const removeFile = async (id: string) => {
     if (busyRef.current) return;
@@ -203,32 +180,20 @@ export default function SelectFilesScreen() {
 
       {/* Screen Header */}
       <View className="px-4 pt-3 pb-3 border-b border-[#1f2d36] bg-[#0c1318]">
-        <AppHeader title="Select Files" subtitle="Choose files to share" />
+        <AppHeader title="Select Documents" subtitle="Choose documents to share" />
       </View>
 
       <View className="flex-1 p-4">
-        {/* Buttons Grid */}
-        <View className="flex-row gap-3 mb-4">
-          <TouchableOpacity
-            onPress={pickPhotosAndVideos}
-            disabled={copying}
-            activeOpacity={0.8}
-            className="flex-1 rounded-2xl bg-[#141e24] border border-[#1f2d36] p-4 flex-row items-center justify-center gap-2.5 shadow-md"
-          >
-            <MaterialCommunityIcons name="image-multiple-outline" size={22} color="#0d8274" />
-            <Text className="text-white text-sm font-bold">Photos & Videos</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={pickDocuments}
-            disabled={copying}
-            activeOpacity={0.8}
-            className="flex-1 rounded-2xl bg-[#141e24] border border-[#1f2d36] p-4 flex-row items-center justify-center gap-2.5 shadow-md"
-          >
-            <MaterialCommunityIcons name="file-document-outline" size={22} color="#38bdf8" />
-            <Text className="text-white text-sm font-bold">Documents</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Document Select Button */}
+        <TouchableOpacity
+          onPress={pickDocuments}
+          disabled={copying}
+          activeOpacity={0.8}
+          className="w-full rounded-2xl bg-[#141e24] border border-[#1f2d36] p-4 flex-row items-center justify-center gap-2.5 shadow-md mb-4"
+        >
+          <MaterialCommunityIcons name="file-document-outline" size={22} color="#38bdf8" />
+          <Text className="text-white text-sm font-bold">Select Documents</Text>
+        </TouchableOpacity>
 
         {/* Selected Files List */}
         <View className="flex-1">
@@ -239,16 +204,16 @@ export default function SelectFilesScreen() {
             </View>
           ) : files.length === 0 ? (
             <View className="flex-1 items-center justify-center py-16">
-              <MaterialCommunityIcons name="folder-open-outline" size={48} color="#475569" />
-              <Text className="text-white text-base font-bold mt-3">No files selected</Text>
+              <MaterialCommunityIcons name="file-document-multiple-outline" size={48} color="#475569" />
+              <Text className="text-white text-base font-bold mt-3">No documents selected</Text>
               <Text className="text-slate-400 text-xs mt-1 text-center">
-                Tap above to select photos, videos, or documents
+                Tap above to select documents or files to share
               </Text>
             </View>
           ) : (
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
               <View className="flex-row items-center justify-between mb-3">
-                <Text className="text-white text-base font-bold">Selected Files ({files.length})</Text>
+                <Text className="text-white text-base font-bold">Selected Documents ({files.length})</Text>
                 <TouchableOpacity onPress={clearAll} disabled={copying} activeOpacity={0.7}>
                   <Text className="text-red-400 text-xs font-bold">Clear All</Text>
                 </TouchableOpacity>
@@ -267,7 +232,7 @@ export default function SelectFilesScreen() {
             onPress={() => {
               if (busyRef.current) return;
               if (filesRef.current.length === 0) {
-                Alert.alert("No files selected", "Please select at least one file to continue.");
+                Alert.alert("No documents selected", "Please select at least one document to continue.");
                 return;
               }
               router.push("/send/devices" as any);
@@ -283,6 +248,7 @@ export default function SelectFilesScreen() {
           </TouchableOpacity>
         </View>
       </View>
+      <BottomNavigation currentTab="files" />
     </SafeAreaView>
   );
 }

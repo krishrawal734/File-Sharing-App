@@ -21,6 +21,14 @@ jest.mock("expo-media-library", () => ({
   createAlbumAsync: jest.fn().mockImplementation(() => Promise.resolve({})),
   addAssetsToAlbumAsync: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
+jest.mock("expo-media-library/legacy", () => ({
+  createAssetAsync: jest.fn().mockImplementation((uri: any) => Promise.resolve({ uri })),
+  getPermissionsAsync: jest.fn().mockImplementation(() => Promise.resolve({ granted: true })),
+  requestPermissionsAsync: jest.fn().mockImplementation(() => Promise.resolve({ granted: true })),
+  getAlbumAsync: jest.fn().mockImplementation(() => Promise.resolve(null)),
+  createAlbumAsync: jest.fn().mockImplementation(() => Promise.resolve({})),
+  addAssetsToAlbumAsync: jest.fn().mockImplementation(() => Promise.resolve({})),
+}));
 
 describe("downloadUtils & file-saver module", () => {
   beforeEach(() => {

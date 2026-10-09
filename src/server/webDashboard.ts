@@ -44,10 +44,6 @@ export function getWebDashboardHTML(): string {
         <i id="refreshIcon" class="fa-solid fa-rotate-right"></i>
         <span>Refresh & Clear</span>
       </button>
-      <button onclick="resetClearedFiles()" class="px-3 py-2 rounded-xl bg-[#141e24] hover:bg-[#1f2d36] border border-[#1f2d36] text-xs font-semibold text-slate-400 hover:text-white transition flex items-center gap-1.5 whitespace-nowrap shrink-0" title="Restore hidden files in web view">
-        <i class="fa-solid fa-eye"></i>
-        <span>Show All</span>
-      </button>
       <button onclick="downloadAllDirect()" class="px-3.5 py-2 rounded-xl bg-[#141e24] hover:bg-[#1f2d36] border border-[#0d8274]/40 text-xs font-semibold text-emerald-400 transition flex items-center gap-2 whitespace-nowrap shrink-0">
         <i class="fa-solid fa-file-arrow-down"></i>
         <span class="hidden md:inline">Download All</span> (Direct)

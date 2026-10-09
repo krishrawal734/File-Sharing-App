@@ -25,6 +25,8 @@ jest.mock("react", () => {
     },
     startRender: () => { cursor = 0; },
     resetHooks: () => { hooks.length = 0; cursor = 0; },
+    memo: (component: unknown) => component,
+    useEffect: () => {},
   };
 });
 jest.mock("react/jsx-runtime", () => ({
@@ -46,6 +48,7 @@ jest.mock("@expo/vector-icons", () => ({ MaterialCommunityIcons: "MaterialCommun
 jest.mock("expo-router", () => ({ router: { push: jest.fn() } }));
 jest.mock("../../../components/AppHeader", () => "AppHeader");
 jest.mock("../../../components/FileCard", () => "FileCard");
+jest.mock("../../../components/BottomNavigation", () => "BottomNavigation");
 jest.mock("../../../server/localServer", () => ({
   clearSharedFiles: jest.fn(),
   copyFileToServer: jest.fn(),
@@ -74,7 +77,7 @@ const cards = () => nodes(render(), "FileCard");
 const doc = (name: string) => ({ name, uri: `file:///cache/${name}`, size: 123, mimeType: "text/plain", lastModified: 0 });
 const select = async (...names: string[]) => {
   jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValueOnce({ canceled: false, assets: names.map(doc) });
-  await buttons()[1].props.onPress();
+  await buttons()[0].props.onPress();
 };
 
 beforeEach(() => {
@@ -127,9 +130,9 @@ describe("sender file selection", () => {
     expect(removeSharedFile).toHaveBeenLastCalledWith("one.txt");
     expect(cards().map((card) => card.props.file.name)).toEqual(["two.txt"]);
     jest.mocked(clearSharedFiles).mockRejectedValueOnce(new Error("clear failed"));
-    await buttons()[2].props.onPress();
+    await buttons()[1].props.onPress();
     expect(cards()).toHaveLength(1);
-    await buttons()[2].props.onPress();
+    await buttons()[1].props.onPress();
     expect(cards()).toHaveLength(0);
   });
 
@@ -140,7 +143,7 @@ describe("sender file selection", () => {
     await Promise.resolve();
     await Promise.resolve();
     expect(buttons().at(-1)?.props.disabled).toBe(true);
-    await buttons()[1].props.onPress();
+    await buttons()[0].props.onPress();
     buttons().at(-1)?.props.onPress();
     expect(DocumentPicker.getDocumentAsync).toHaveBeenCalledTimes(1);
     expect(router.push).not.toHaveBeenCalled();

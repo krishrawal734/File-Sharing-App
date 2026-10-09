@@ -1,5 +1,5 @@
+import * as MediaLibrary from "expo-media-library/legacy";
 import { Platform } from "react-native";
-import * as MediaLibrary from "expo-media-library";
 import FileSaver from "../../modules/file-saver/src/FileSaverModule";
 import { isMediaFile } from "./fileUtils";
 
@@ -97,7 +97,7 @@ export function getMimeType(fileName: string): string {
  */
 export async function saveFileToGallery(
   fileUri: string,
-  fileName: string
+  fileName: string,
 ): Promise<string> {
   const mimeType = getMimeType(fileName);
 
@@ -108,17 +108,23 @@ export async function saveFileToGallery(
       return result;
     }
   } catch (nativeError) {
-    console.log("Native FileSaver saveToGallery error, falling back to MediaLibrary:", nativeError);
+    console.log(
+      "Native FileSaver saveToGallery error, falling back to MediaLibrary:",
+      nativeError,
+    );
   }
 
   // Fallback to MediaLibrary (for Expo Go or if native module method fails)
   const ml: any = MediaLibrary;
   const createAsset = ml.createAssetAsync || ml.default?.createAssetAsync;
-  const getPermissions = ml.getPermissionsAsync || ml.default?.getPermissionsAsync;
-  const requestPermissions = ml.requestPermissionsAsync || ml.default?.requestPermissionsAsync;
+  const getPermissions =
+    ml.getPermissionsAsync || ml.default?.getPermissionsAsync;
+  const requestPermissions =
+    ml.requestPermissionsAsync || ml.default?.requestPermissionsAsync;
   const getAlbum = ml.getAlbumAsync || ml.default?.getAlbumAsync;
   const createAlbum = ml.createAlbumAsync || ml.default?.createAlbumAsync;
-  const addAssetsToAlbum = ml.addAssetsToAlbumAsync || ml.default?.addAssetsToAlbumAsync;
+  const addAssetsToAlbum =
+    ml.addAssetsToAlbumAsync || ml.default?.addAssetsToAlbumAsync;
 
   let asset: any;
   try {
@@ -148,7 +154,10 @@ export async function saveFileToGallery(
       await addAssetsToAlbum?.([asset], album, false);
     }
   } catch (albumError) {
-    console.log("Could not add to File Sharing album, saved to main gallery:", albumError);
+    console.log(
+      "Could not add to File Sharing album, saved to main gallery:",
+      albumError,
+    );
   }
 
   return asset?.uri || fileUri;
@@ -159,24 +168,35 @@ export async function saveFileToGallery(
  */
 export async function saveFileToDownloads(
   fileUri: string,
-  fileName: string
+  fileName: string,
 ): Promise<string> {
   const mimeType = getMimeType(fileName);
 
   try {
     if (FileSaver && typeof FileSaver.saveToDownloads === "function") {
       if (Platform.OS === "android" && Number(Platform.Version) >= 29) {
-        const result = await FileSaver.saveToDownloads(fileUri, fileName, mimeType);
+        const result = await FileSaver.saveToDownloads(
+          fileUri,
+          fileName,
+          mimeType,
+        );
         console.log("Saved to Downloads via FileSaver module:", result);
         return result;
       } else if (Platform.OS === "android" || Platform.OS === "ios") {
         try {
-          const result = await FileSaver.saveToDownloads(fileUri, fileName, mimeType);
+          const result = await FileSaver.saveToDownloads(
+            fileUri,
+            fileName,
+            mimeType,
+          );
           console.log("Saved to storage via FileSaver module:", result);
           return result;
         } catch {
           if (FileSaver.saveToAppDocuments) {
-            const fallbackResult = await FileSaver.saveToAppDocuments(fileUri, fileName);
+            const fallbackResult = await FileSaver.saveToAppDocuments(
+              fileUri,
+              fileName,
+            );
             console.log("Saved to app Documents fallback:", fallbackResult);
             return fallbackResult;
           }
@@ -190,7 +210,9 @@ export async function saveFileToDownloads(
     }
   }
 
-  throw new Error("Saving files to storage is not supported on this device/platform.");
+  throw new Error(
+    "Saving files to storage is not supported on this device/platform.",
+  );
 }
 
 /**
@@ -200,7 +222,7 @@ export async function saveFileToDownloads(
  */
 export async function saveFile(
   fileUri: string,
-  fileName: string
+  fileName: string,
 ): Promise<{ uri: string; savedTo: "gallery" | "storage" }> {
   if (isMediaFile(fileName)) {
     const uri = await saveFileToGallery(fileUri, fileName);

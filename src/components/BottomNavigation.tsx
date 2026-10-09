@@ -4,7 +4,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-export type TabName = "home" | "photos" | "videos" | "music";
+export type TabName = "home" | "photos" | "videos" | "music" | "files";
 
 interface TabItem {
   id: TabName;
@@ -42,6 +42,13 @@ const TABS: TabItem[] = [
     icon: "music-note-outline",
     activeIcon: "music-note",
     route: "/music",
+  },
+  {
+    id: "files",
+    label: "Files",
+    icon: "folder-outline",
+    activeIcon: "folder",
+    route: "/send/files",
   },
 ];
 

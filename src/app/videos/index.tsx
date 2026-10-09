@@ -1,26 +1,32 @@
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import * as FileSystem from "expo-file-system/legacy";
+import { Image } from "expo-image";
+import { router } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  FlatList,
   ActivityIndicator,
   Alert,
+  FlatList,
   Modal,
   Share,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { StatusBar } from "expo-status-bar";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { Image } from "expo-image";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import * as MediaLibrary from "expo-media-library/legacy";
-import * as FileSystem from "expo-file-system/legacy";
-import { router } from "expo-router";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import BottomNavigation from "../../components/BottomNavigation";
 import SearchBar from "../../components/ui/SearchBar";
+import {
+  clearSharedFiles,
+  copyMultipleFilesToServer,
+} from "../../server/localServer";
 import { SelectedFile } from "../../types/file";
-import { clearSharedFiles, copyMultipleFilesToServer } from "../../server/localServer";
 
 interface VideoGroupHeader {
   type: "header";
@@ -46,13 +52,19 @@ function formatDuration(seconds: number): string {
 
 export default function VideosScreen() {
   const insets = useSafeAreaInsets();
-  const [permissionStatus, setPermissionStatus] = useState<"loading" | "granted" | "denied">("loading");
+  const [permissionStatus, setPermissionStatus] = useState<
+    "loading" | "granted" | "denied"
+  >("loading");
   const [loadingVideos, setLoadingVideos] = useState(false);
   const [videos, setVideos] = useState<MediaLibrary.Asset[]>([]);
-  const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(new Set());
+  const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [isProcessingSend, setIsProcessingSend] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [previewAsset, setPreviewAsset] = useState<MediaLibrary.Asset | null>(null);
+  const [previewAsset, setPreviewAsset] = useState<MediaLibrary.Asset | null>(
+    null,
+  );
 
   // Load videos from device media library
   const loadDeviceVideos = useCallback(async () => {
@@ -100,12 +112,17 @@ export default function VideosScreen() {
 
   const listItems = useMemo<ListItem[]>(() => {
     if (filteredVideos.length === 0) return [];
-    const groupsMap = new Map<string, { title: string; assets: MediaLibrary.Asset[] }>();
+    const groupsMap = new Map<
+      string,
+      { title: string; assets: MediaLibrary.Asset[] }
+    >();
 
     filteredVideos.forEach((asset) => {
-      const date = asset.creationTime ? new Date(asset.creationTime) : new Date();
+      const date = asset.creationTime
+        ? new Date(asset.creationTime)
+        : new Date();
       const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
-        date.getDate()
+        date.getDate(),
       ).padStart(2, "0")}`;
 
       if (!groupsMap.has(dateKey)) {
@@ -148,7 +165,9 @@ export default function VideosScreen() {
     if (selectedAssetIds.size === 0) return;
     setIsProcessingSend(true);
     try {
-      const selectedAssets = videos.filter((v) => selectedAssetIds.has(v.id || v.uri));
+      const selectedAssets = videos.filter((v) =>
+        selectedAssetIds.has(v.id || v.uri),
+      );
       const preparedFiles: SelectedFile[] = [];
 
       const seenNames = new Map<string, number>();
@@ -172,7 +191,9 @@ export default function VideosScreen() {
         }
 
         const extParts = (asset.filename || finalUri).split(".");
-        const ext = (extParts.length > 1 ? extParts.pop() : "mp4")?.toLowerCase() || "mp4";
+        const ext =
+          (extParts.length > 1 ? extParts.pop() : "mp4")?.toLowerCase() ||
+          "mp4";
         let rawName = asset.filename || `video_${i + 1}.${ext}`;
         rawName = rawName.replace(/[\/\\]/g, "_").trim();
 
@@ -203,12 +224,15 @@ export default function VideosScreen() {
 
       await clearSharedFiles();
       await copyMultipleFilesToServer(
-        preparedFiles.map((file) => ({ uri: file.uri, name: file.name }))
+        preparedFiles.map((file) => ({ uri: file.uri, name: file.name })),
       );
 
       router.push("/send/devices");
     } catch (error: any) {
-      Alert.alert("Transfer Error", error?.message || "Failed to prepare videos.");
+      Alert.alert(
+        "Transfer Error",
+        error?.message || "Failed to prepare videos.",
+      );
     } finally {
       setIsProcessingSend(false);
     }
@@ -240,9 +264,17 @@ export default function VideosScreen() {
           <View className="flex-row items-center gap-3.5 flex-1 pr-2">
             {/* Thumbnail */}
             <View className="w-16 h-16 rounded-xl bg-slate-800 overflow-hidden relative justify-center items-center">
-              <Image source={{ uri: asset.uri }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+              <Image
+                source={{ uri: asset.uri }}
+                style={{ width: "100%", height: "100%" }}
+                contentFit="cover"
+              />
               <View className="absolute inset-0 bg-black/30 items-center justify-center">
-                <MaterialCommunityIcons name="play-circle" size={24} color="#FFFFFF" />
+                <MaterialCommunityIcons
+                  name="play-circle"
+                  size={24}
+                  color="#FFFFFF"
+                />
               </View>
               <View className="absolute bottom-1 right-1 bg-black/70 px-1 py-0.5 rounded">
                 <Text className="text-white text-[9px] font-medium">
@@ -269,26 +301,44 @@ export default function VideosScreen() {
           >
             <View
               className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
-                isSelected ? "bg-[#0d8274] border-[#0d8274]" : "border-slate-500 bg-transparent"
+                isSelected
+                  ? "bg-[#0d8274] border-[#0d8274]"
+                  : "border-slate-500 bg-transparent"
               }`}
             >
-              {isSelected && <MaterialCommunityIcons name="check" size={14} color="#FFFFFF" />}
+              {isSelected && (
+                <MaterialCommunityIcons
+                  name="check"
+                  size={14}
+                  color="#FFFFFF"
+                />
+              )}
             </View>
           </TouchableOpacity>
         </TouchableOpacity>
       );
     },
-    [selectedAssetIds, toggleVideoSelection]
+    [selectedAssetIds, toggleVideoSelection],
   );
 
   if (permissionStatus === "denied") {
     return (
-      <SafeAreaView className="flex-1 bg-[#090d10] items-center justify-center p-6" edges={["top", "left", "right"]}>
+      <SafeAreaView
+        className="flex-1 bg-[#090d10] items-center justify-center p-6"
+        edges={["top", "left", "right"]}
+      >
         <StatusBar style="light" />
-        <MaterialCommunityIcons name="video-off-outline" size={54} color="#f87171" />
-        <Text className="text-white text-lg font-bold mt-4 text-center">Video Access Denied</Text>
+        <MaterialCommunityIcons
+          name="video-off-outline"
+          size={54}
+          color="#f87171"
+        />
+        <Text className="text-white text-lg font-bold mt-4 text-center">
+          Video Access Denied
+        </Text>
         <Text className="text-slate-400 text-sm text-center mt-2">
-          Air—DropX needs access to your media library to list videos for transfer.
+          Air—DropX needs access to your media library to list videos for
+          transfer.
         </Text>
         <BottomNavigation currentTab="videos" />
       </SafeAreaView>
@@ -296,7 +346,10 @@ export default function VideosScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-[#090d10]" edges={["top", "left", "right"]}>
+    <SafeAreaView
+      className="flex-1 bg-[#090d10]"
+      edges={["top", "left", "right"]}
+    >
       <StatusBar style="light" />
 
       {/* Screen Header */}
@@ -304,20 +357,34 @@ export default function VideosScreen() {
         <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center gap-3">
             <TouchableOpacity
-              onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}
+              onPress={() =>
+                router.canGoBack() ? router.back() : router.replace("/")
+              }
               activeOpacity={0.7}
               className="w-9 h-9 rounded-full bg-[#141e24] border border-[#1f2d36] items-center justify-center"
             >
-              <MaterialCommunityIcons name="arrow-left" size={20} color="#FFFFFF" />
+              <MaterialCommunityIcons
+                name="arrow-left"
+                size={20}
+                color="#FFFFFF"
+              />
             </TouchableOpacity>
             <View>
-              <Text className="text-white text-xl font-bold tracking-wide">Videos</Text>
-              <Text className="text-slate-400 text-xs mt-0.5">{videos.length} videos on device</Text>
+              <Text className="text-white text-xl font-bold tracking-wide">
+                Videos
+              </Text>
+              <Text className="text-slate-400 text-xs mt-0.5">
+                {videos.length} videos on device
+              </Text>
             </View>
           </View>
         </View>
 
-        <SearchBar value={searchQuery} onChangeText={setSearchQuery} placeholder="Search videos..." />
+        <SearchBar
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search videos..."
+        />
       </View>
 
       {/* Video List */}
@@ -328,8 +395,14 @@ export default function VideosScreen() {
           </View>
         ) : filteredVideos.length === 0 ? (
           <View className="flex-1 items-center justify-center py-20">
-            <MaterialCommunityIcons name="video-off-outline" size={44} color="#475569" />
-            <Text className="text-white text-base font-bold mt-3">No Videos Found</Text>
+            <MaterialCommunityIcons
+              name="video-off-outline"
+              size={44}
+              color="#475569"
+            />
+            <Text className="text-white text-base font-bold mt-3">
+              No Videos Found
+            </Text>
           </View>
         ) : (
           <FlatList
@@ -353,7 +426,8 @@ export default function VideosScreen() {
               <MaterialCommunityIcons name="check" size={18} color="#FFFFFF" />
             </View>
             <Text className="text-white text-sm font-bold">
-              {selectedAssetIds.size} Video{selectedAssetIds.size !== 1 ? "s" : ""} Selected
+              {selectedAssetIds.size} Video
+              {selectedAssetIds.size !== 1 ? "s" : ""} Selected
             </Text>
           </View>
 
@@ -379,10 +453,16 @@ export default function VideosScreen() {
       <Modal visible={!!previewAsset} transparent animationType="fade">
         <View className="flex-1 bg-black justify-between">
           <SafeAreaView className="flex-row items-center justify-between px-4 py-2 z-10 bg-black/60">
-            <TouchableOpacity onPress={() => setPreviewAsset(null)} className="p-2">
+            <TouchableOpacity
+              onPress={() => setPreviewAsset(null)}
+              className="p-2"
+            >
               <MaterialCommunityIcons name="close" size={26} color="#FFFFFF" />
             </TouchableOpacity>
-            <Text className="text-white text-sm font-semibold flex-1 mx-2" numberOfLines={1}>
+            <Text
+              className="text-white text-sm font-semibold flex-1 mx-2"
+              numberOfLines={1}
+            >
               {previewAsset?.filename}
             </Text>
             {previewAsset && (
@@ -390,7 +470,11 @@ export default function VideosScreen() {
                 onPress={() => Share.share({ url: previewAsset.uri })}
                 className="p-2"
               >
-                <MaterialCommunityIcons name="share-variant-outline" size={24} color="#FFFFFF" />
+                <MaterialCommunityIcons
+                  name="share-variant-outline"
+                  size={24}
+                  color="#FFFFFF"
+                />
               </TouchableOpacity>
             )}
           </SafeAreaView>
@@ -409,7 +493,11 @@ export default function VideosScreen() {
                   }
                   className="w-16 h-16 rounded-full bg-[#0d8274]/80 items-center justify-center border-2 border-white"
                 >
-                  <MaterialCommunityIcons name="play" size={36} color="#FFFFFF" />
+                  <MaterialCommunityIcons
+                    name="play"
+                    size={36}
+                    color="#FFFFFF"
+                  />
                 </TouchableOpacity>
               </View>
             </View>
@@ -424,8 +512,14 @@ export default function VideosScreen() {
                 }}
                 className="flex-row items-center gap-2 bg-[#0d8274] px-6 py-3 rounded-2xl"
               >
-                <MaterialCommunityIcons name="check-circle-outline" size={20} color="#FFFFFF" />
-                <Text className="text-white font-bold text-sm">Select for Transfer</Text>
+                <MaterialCommunityIcons
+                  name="check-circle-outline"
+                  size={20}
+                  color="#FFFFFF"
+                />
+                <Text className="text-white font-bold text-sm">
+                  Select for Transfer
+                </Text>
               </TouchableOpacity>
             )}
           </SafeAreaView>
